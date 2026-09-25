@@ -1,9 +1,13 @@
 FROM php:8.2-apache
 
-# Install MariaDB server and client
+# Remove policy-rc.d so background services can run inside container
+RUN rm -f /usr/sbin/policy-rc.d
+
+# Install MariaDB server and client + utilities
 RUN apt-get update && apt-get install -y --no-install-recommends \
     mariadb-server \
     mariadb-client \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Install required PHP extensions for MySQL
@@ -12,11 +16,16 @@ RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable mysqli 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Configure low-memory MariaDB settings (optimized for 512MB RAM free cloud tiers)
-RUN printf "[mysqld]\nperformance_schema = OFF\ninnodb_buffer_pool_size = 32M\ninnodb_log_buffer_size = 1M\nmax_connections = 50\nkey_buffer_size = 8M\n" > /etc/mysql/mariadb.conf.d/99-low-memory.cnf
+# Setup MariaDB data directory, socket directory, and pre-initialize system tables
+RUN mkdir -p /var/run/mysqld /var/lib/mysql \
+    && chown -R mysql:mysql /var/run/mysqld /var/lib/mysql \
+    && mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 
-# Configure PHP settings (upload limits, execution time)
-RUN printf "file_uploads = On\nmemory_limit = 256M\nupload_max_filesize = 64M\npost_max_size = 64M\nmax_execution_time = 300\n" > /usr/local/etc/php/conf.d/custom-uploads.ini
+# Configure low-memory MariaDB settings (optimized for 512MB RAM free cloud tiers)
+RUN printf "[mysqld]\nbind-address = 0.0.0.0\nport = 3306\nsocket = /var/run/mysqld/mysqld.sock\nperformance_schema = OFF\ninnodb_buffer_pool_size = 32M\ninnodb_log_buffer_size = 1M\nmax_connections = 50\nkey_buffer_size = 8M\n" > /etc/mysql/mariadb.conf.d/99-low-memory.cnf
+
+# Configure PHP settings (upload limits, execution time, explicit socket path)
+RUN printf "file_uploads = On\nmemory_limit = 256M\nupload_max_filesize = 64M\npost_max_size = 64M\nmax_execution_time = 300\nmysqli.default_socket = /var/run/mysqld/mysqld.sock\n" > /usr/local/etc/php/conf.d/custom-uploads.ini
 
 # Set working directory
 WORKDIR /var/www/html

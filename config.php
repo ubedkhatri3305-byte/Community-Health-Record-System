@@ -32,17 +32,28 @@ if (!$mysqli) {
 
 $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
 
-if ($DB_SSL) {
-    $mysqli->ssl_set(NULL, NULL, NULL, NULL, NULL);
-    $connected = @$mysqli->real_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT, NULL, MYSQLI_CLIENT_SSL);
-} else {
-    $connected = @$mysqli->real_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
-}
+// Helper function to safely attempt real_connect without crashing on PHP 8.1+ exceptions
+$attempt_connect = function($host, $user, $pass, $name, $port, $ssl) use ($mysqli) {
+    try {
+        if ($ssl) {
+            $mysqli->ssl_set(NULL, NULL, NULL, NULL, NULL);
+            return @$mysqli->real_connect($host, $user, $pass, $name, $port, NULL, MYSQLI_CLIENT_SSL);
+        } else {
+            return @$mysqli->real_connect($host, $user, $pass, $name, $port);
+        }
+    } catch (Throwable $e) {
+        return false;
+    }
+};
 
-if (!$connected) {
-    // If SSL connection failed, try standard connection once as fallback
-    if ($DB_SSL) {
-        $connected = @$mysqli->real_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
+$connected = $attempt_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT, $DB_SSL);
+
+// If failed and host was localhost or 127.0.0.1, try alternative local binding
+if (!$connected && ($DB_HOST === 'localhost' || $DB_HOST === '127.0.0.1')) {
+    $alt_host = ($DB_HOST === 'localhost') ? '127.0.0.1' : 'localhost';
+    $connected = $attempt_connect($alt_host, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT, false);
+    if ($connected) {
+        $DB_HOST = $alt_host;
     }
 }
 
