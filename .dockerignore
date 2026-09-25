@@ -1,0 +1,7 @@
+.git
+.gitignore
+.dockerignore
+.github
+render.yaml
+vercel.json
+.vercelignore

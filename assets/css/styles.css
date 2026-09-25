@@ -1,0 +1,187 @@
+/* styles.css - shared for all CHR pages */
+:root{
+  --primary:#1976d2;
+  --primary-dark:#125ca1;
+  --accent:#00a69c;
+  --bg:#f5f7fa;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --radius:14px;
+  --shadow: 0 6px 18px rgba(20,20,40,0.06);
+  --glass: rgba(255,255,255,0.85);
+  --max-width:420px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background:var(--bg);
+  margin:0;
+  color:#1f2937;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Utility */
+.container { max-width: 980px; margin: 22px auto; padding: 16px; }
+.center { display:flex; align-items:center; justify-content:center; }
+.header-title { color:var(--primary); margin:0 0 6px 0; font-weight:700; }
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:18px;
+}
+
+/* Top navigation used on dashboard & inner pages */
+.topbar{
+  background:var(--primary);
+  color:#fff;
+  padding:12px 18px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.topbar .brand{font-weight:700; font-size:18px}
+.topbar a{color:#fff; text-decoration:none; margin-left:14px; font-size:14px}
+
+/* Form + inputs */
+.form {
+  width:100%;
+  max-width:var(--max-width);
+}
+.logo {
+  width:72px; height:72px; border-radius:18px; background:var(--glass);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px auto;font-size:28px;color:var(--primary);
+  box-shadow:0 6px 18px rgba(20,20,40,0.04);
+}
+h2 { text-align:center; margin:6px 0 18px 0; font-size:20px; }
+.input, select, textarea{
+  width:100%;
+  padding:12px 14px;
+  border-radius:10px;
+  border:1px solid #e6edf3;
+  background:#fff;
+  font-size:14px;
+  margin-bottom:12px;
+  outline:none;
+}
+.input:focus, select:focus, textarea:focus{ box-shadow:0 6px 18px rgba(25,118,210,0.06); border-color:var(--primary) }
+.btn{
+  display:inline-block;
+  width:100%;
+  padding:12px 14px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  box-shadow: 0 6px 18px rgba(25,118,210,0.12);
+}
+.link { color:var(--primary); text-decoration:none; display:block; text-align:center; margin-top:12px; font-size:14px }
+
+/* Grid small cards */
+.grid {
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:12px;
+  margin-top:14px;
+}
+.card-small { padding:14px; text-align:center; border-radius:12px; background:var(--card); box-shadow:var(--shadow); }
+.card-small h3{ margin:8px 0 0; font-size:14px; color:#0f1724 }
+
+/* Table-like list for mobile */
+.table {
+  background:var(--card);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.table .row { display:flex; padding:12px 14px; border-bottom:1px solid #f0f3f6; align-items:center; }
+.table .row:last-child { border-bottom:none; }
+.table .col-1 { flex:1; font-size:14px; }
+.table .col-2 { font-size:13px; color:var(--muted); text-align:right; }
+
+/* Larger layout for desktop */
+@media(min-width:900px){
+  body{background:linear-gradient(180deg,#f8fbfc 0%, #f5f7fa 100%)}
+  .container { padding:28px; }
+  .grid { grid-template-columns: repeat(4, 1fr); }
+  .form { max-width:420px; margin:0; }
+  .card { padding:22px; }
+  .header-title { font-size:22px; }
+}
+
+/* Small tweaks for very small screens */
+@media(max-width:420px){
+  .container{padding:12px}
+  .logo{width:64px;height:64px}
+}
+.lab-upload-card{
+  max-width: 420px;
+  margin: auto;
+  padding: 26px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #ffffff, #f9fcff);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  border: 1px solid #e8f1ff;
+}
+
+.upload-icon{
+  font-size: 40px;
+  text-align: center;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+
+.lab-upload-card h2{
+  color: var(--primary);
+  font-size: 22px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.file-box{
+  border: 2px dashed #cfe3ff;
+  padding: 18px;
+  border-radius: 12px;
+  text-align: center;
+  background: #f8fbff;
+  margin-bottom: 12px;
+  transition: 0.3s;
+}
+
+.file-box:hover{
+  border-color: var(--primary);
+  background: #eef6ff;
+}
+
+.file-box input{
+  width: 100%;
+}
+
+.btn-upload{
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border: none;
+  color: white;
+  padding: 12px;
+  width: 100%;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-upload:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+}
+
+.note-text{
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 10px;
+}
