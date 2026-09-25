@@ -35,16 +35,9 @@ A full-featured web-based Community Health Record management system built with P
 
 ---
 
-## 🗄️ Database Setup (`database.sql`)
+## 🗄️ Database (`database.sql`)
 
-The repository includes a complete database schema in [`database.sql`](database.sql).
-
-### Initial Default Admin Account:
-- **Email:** `admin@chr.com`
-- **Password:** `password123`
-- **Role:** `admin`
-
----
+The repository includes your complete database dump exported directly from XAMPP in [`database.sql`](database.sql), including all existing patients, doctors, appointments, hospitals, laboratories, and reports.
 
 ## 🚀 Deployment Guide
 
