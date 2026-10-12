@@ -69,77 +69,48 @@ while ($r = $cal_res->fetch_assoc()) {
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Doctor Dashboard</title>
+<title>Doctor Dashboard - CHR</title>
 
+<link rel="stylesheet" href="assets/css/styles.css">
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
-body{font-family:Segoe UI;background:#f4f7fb;margin:0}
-.container{max-width:1000px;margin:auto;padding:15px}
-
-.topbar{
-  background:#2563eb;
-  color:white;
-  padding:12px;
-  border-radius:10px;
-  display:flex;
-  justify-content:space-between;
-  flex-wrap:wrap;
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  width: auto;
+  display: inline-flex;
 }
 
-.card{
-  background:white;
-  padding:12px;
-  border-radius:10px;
-  margin-top:12px;
-  box-shadow:0 5px 15px rgba(0,0,0,0.05);
+#calendar {
+  margin-top: 15px;
+  background: white;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
 }
 
-.btn{
-  padding:6px 10px;
-  border:none;
-  border-radius:6px;
-  background:#2563eb;
-  color:white;
-  cursor:pointer;
-  margin:3px;
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
-.btn-red{background:red}
-.btn-gray{background:gray}
-
-input{
-  padding:8px;
-  border:1px solid #ddd;
-  border-radius:6px;
-}
-
-#calendar{
-  margin-top:15px;
-  background:white;
-  padding:10px;
-  border-radius:10px;
-}
-
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  justify-content:center;
-  align-items:center;
-}
-
-.modal-content{
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  width:280px;
-}
-
-@media(max-width:600px){
-  .topbar{flex-direction:column;gap:8px}
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 320px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--card-border);
 }
 </style>
 </head>

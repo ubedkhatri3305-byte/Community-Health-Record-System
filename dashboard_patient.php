@@ -83,32 +83,6 @@ $reports = $stmt4->get_result();
 <title>CHR - Patient Dashboard</title>
 
 <link rel="stylesheet" href="assets/css/styles.css">
-
-<style>
-/* MOBILE RESPONSIVE (NO CSS CHANGE) */
-.flex-wrap{
-    display:flex;
-    gap:16px;
-    flex-wrap:wrap;
-}
-
-@media(max-width:768px){
-    .flex-wrap{flex-direction:column;}
-    .topbar{flex-direction:column;gap:10px;}
-    .row{flex-direction:column;gap:5px;}
-    .grid{grid-template-columns:repeat(2,1fr);}
-}
-
-.delete-btn{
-    background:red;
-    color:white;
-    padding:5px 10px;
-    border-radius:6px;
-    text-decoration:none;
-    font-size:12px;
-}
-</style>
-
 </head>
 
 <body>
@@ -211,59 +185,57 @@ $reports = $stmt4->get_result();
 
 <?php while($a = $appts->fetch_assoc()):
     $isRescheduled = !empty($a['rescheduled_date']);
-    $statusColors = [
-        'accepted'    => 'green',
-        'rejected'    => 'red',
-        'rescheduled' => '#b45309',
-        'pending'     => 'gray',
-    ];
-    $statusColor = $statusColors[$a['status']] ?? 'gray';
+    $statusClass = 'badge-' . ($a['status'] ?? 'pending');
 ?>
 
-<div class="row" style="border-bottom:1px solid #ddd;padding:8px;">
+<div class="row" style="padding:12px;border-bottom:1px solid #f1f5f9;">
 
+<div>
 <b><?= htmlspecialchars($a['doctor_name']) ?></b><br>
-<?= htmlspecialchars($a['doctor_hospital']) ?><br>
+<small style="color:var(--text-secondary);"><?= htmlspecialchars($a['doctor_hospital']) ?></small><br>
 
 <?php if ($isRescheduled): ?>
 
 <!-- RESCHEDULED -->
-<div style="background:#fff7ed;color:#9a3412;padding:8px;border-radius:6px;margin-top:5px;">
-    ⚠ Doctor rescheduled your appointment<br>
-    <span style="text-decoration:line-through;font-size:12px;color:#999;">
+<div class="badge-rescheduled" style="padding:8px 12px;border-radius:8px;margin-top:6px;display:inline-block;">
+    <strong>🔄 Doctor rescheduled your appointment</strong><br>
+    <span style="text-decoration:line-through;font-size:12px;opacity:0.8;">
         Was: <?= $a['appt_date'] ?> | <?= substr($a['appt_time'],0,5) ?>
     </span><br>
-    <b>New Date: <?= $a['rescheduled_date'] ?> | <?= substr($a['rescheduled_time'],0,5) ?></b><br>
+    <b>New Date: <?= $a['rescheduled_date'] ?> | <?= substr($a['rescheduled_time'],0,5) ?></b>
     <?php if (!empty($a['reschedule_msg'])): ?>
-    <small><?= htmlspecialchars($a['reschedule_msg']) ?></small>
+    <br><small><?= htmlspecialchars($a['reschedule_msg']) ?></small>
     <?php endif; ?>
 </div>
 
 <?php else: ?>
 
 <!-- ORIGINAL DATE -->
-<b>Date:</b> <?= $a['appt_date'] ?> | <?= $a['appt_time'] ?><br>
+<div style="font-size:13px;color:var(--text-secondary);margin-top:3px;">
+    <strong>Date:</strong> <?= $a['appt_date'] ?> | <?= $a['appt_time'] ?>
+</div>
 
 <?php endif; ?>
 
 <?php if (!empty($a['reason'])): ?>
-<small style="color:gray;">Reason: <?= htmlspecialchars($a['reason']) ?></small><br>
+<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Reason: <?= htmlspecialchars($a['reason']) ?></div>
 <?php endif; ?>
 
-<!-- STATUS -->
-<b>Status:</b>
-<span style="color:<?= $statusColor ?>;">
-    <?= ucfirst($a['status']) ?>
-</span>
-
-<br><br>
+<div style="margin-top:6px;">
+    <span class="badge <?= $statusClass ?>">
+        <?= ucfirst($a['status']) ?>
+    </span>
+</div>
+</div>
 
 <!-- DELETE -->
+<div>
 <a class="delete-btn"
 href="?delete=<?= $a['id'] ?>"
 onclick="return confirm('Delete appointment?')">
 Delete
 </a>
+</div>
 
 </div>
 
@@ -274,24 +246,25 @@ Delete
 </div>
 
 <!-- LAB APPOINTMENTS -->
-<div class="card" style="margin-top:12px;">
+<div class="card" style="margin-top:16px;">
 <h3 class="header-title">Lab Appointments</h3>
 
 <?php if($lab_appts->num_rows === 0): ?>
-<p>No lab appointments yet.</p>
+<p style="color:var(--text-muted);font-size:14px;">No lab appointments yet.</p>
 <?php else: ?>
 
 <?php while($l = $lab_appts->fetch_assoc()): ?>
-<div class="row" style="border-bottom:1px solid #ddd;padding:6px;">
+<div class="row" style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">
+<div>
 <b><?=htmlspecialchars($l['lab_name'])?></b><br>
-<?=htmlspecialchars($l['test_name'])?><br>
-<?=htmlspecialchars($l['appointment_date'])?><br>
+<span style="font-size:13px;color:var(--text-secondary);"><?=htmlspecialchars($l['test_name'])?> &bull; <?=htmlspecialchars($l['appointment_date'])?></span>
+</div>
 
-<b>Status:</b>
-<span style="color:
-<?= $l['status']=='accepted'?'green':($l['status']=='rejected'?'red':'gray')?>;">
+<div>
+<span class="badge badge-<?=htmlspecialchars($l['status'])?>">
 <?= ucfirst($l['status']) ?>
 </span>
+</div>
 </div>
 <?php endwhile; ?>
 

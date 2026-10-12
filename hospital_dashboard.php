@@ -53,91 +53,21 @@ $result = $stmt->get_result();
 <!DOCTYPE html>
 <html>
 <head>
-<title>Hospital Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hospital Doctor Management - CHR</title>
+<link rel="stylesheet" href="assets/css/styles.css">
 
 <style>
-body {
-    font-family: Arial;
-    background: #f1f5f9;
-}
-
-.container {
-    width: 85%;
-    margin: auto;
-    margin-top: 30px;
-}
-
-.topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.btn {
-    padding: 8px 14px;
-    background: green;
-    color: white;
-    border-radius: 6px;
-    text-decoration: none;
-    margin-left: 5px;
-}
-
-.btn-danger {
-    background: red;
-}
-
-/* 🔍 SEARCH BOX */
-.search-box {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-}
-
-.search-box input {
-    padding: 8px;
-    width: 250px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
-
-.search-box button {
-    padding: 8px 12px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background: white;
-}
-
-th, td {
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-    text-align: center;
-}
-
-th {
-    background: #e2e8f0;
-}
-
 .doctor-link {
-    color: #2563eb;
+    color: var(--primary);
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
 }
-
 .doctor-link:hover {
+    color: var(--primary-hover);
     text-decoration: underline;
 }
 </style>
-
 </head>
 
 <body>
@@ -145,22 +75,23 @@ th {
 <div class="container">
 
 <div class="topbar">
-<h2>🏥 Hospital Doctor Management</h2>
-
-<div>
-<a href="register_doctor.php" class="btn">+ Add Doctor</a>
-<a href="edit_hospital_profile.php" class="btn">Edit Profile</a>
-<a href="logout.php" class="btn btn-danger">Logout</a>
-</div>
+    <div class="brand">Doctor Management</div>
+    <div>
+        <a href="register_doctor.php">+ Add Doctor</a>
+        <a href="hospital_map.php">Map View</a>
+        <a href="edit_hospital_profile.php">Edit Profile</a>
+        <a href="logout.php">Logout</a>
+    </div>
 </div>
 
 <!-- 🔍 SEARCH -->
-<form method="get" class="search-box">
+<form method="get" style="display:flex;gap:10px;margin-bottom:18px;max-width:440px;">
     <input type="text" name="search" placeholder="Search doctor name..."
-           value="<?= htmlspecialchars($search) ?>">
-    <button>Search</button>
+           value="<?= htmlspecialchars($search) ?>" class="input" style="margin-bottom:0;">
+    <button class="btn" style="width:auto;padding:0 22px;">Search</button>
 </form>
 
+<div class="card" style="padding:0;overflow:hidden;">
 <table>
 
 <tr>
@@ -207,6 +138,7 @@ th {
 <?php endif; ?>
 
 </table>
+</div>
 
 </div>
 

@@ -68,57 +68,50 @@ $msg = isset($_GET['msg']) ? urldecode($_GET['msg']) : '';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CHR - Login</title>
+    <title>Login - Community Health Record System</title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <style>
-        .center {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .card.form {
-            max-width: 400px;
-            width: 100%;
-        }
-    </style>
 </head>
 <body>
 
-<div class="center">
+<div class="center" style="min-height:100vh;padding:20px 0;">
     <div class="card form">
-        <div class="logo">CHR</div>
-        <h2>Login</h2>
+        <div class="logo">🏥</div>
+        <h2 style="margin-bottom:4px;">CHR Portal</h2>
+        <p style="text-align:center;color:var(--text-muted);font-size:13px;margin-bottom:22px;">Community Health Record System</p>
 
         <?php if($msg): ?>
-            <div style="background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;text-align:center;margin-bottom:10px;">
+            <div class="msg error" style="margin-bottom:16px;">
                 ❌ <?= htmlspecialchars($msg) ?>
             </div>
         <?php endif; ?>
 
         <form method="post">
-            <input class="input" type="email" name="email" placeholder="Email" required>
+            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:5px;">Email Address</label>
+            <input class="input" type="email" name="email" placeholder="name@example.com" required>
             
-            <input class="input" type="password" name="password" placeholder="Password" required>
+            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:5px;">Password</label>
+            <input class="input" type="password" name="password" placeholder="••••••••" required>
             
+            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:5px;">Account Role</label>
             <select class="input" name="role" required>
-                <option value="">Login as...</option>
+                <option value="">Select your role...</option>
                 <option value="patient">👤 Patient</option>
-                <option value="doctor">👨‍⚕️ Doctor</option>
+                <option value="doctor">🩺 Doctor</option>
                 <option value="hospital">🏥 Hospital</option>
-                <option value="laboratory">🧪 Laboratory</option>
+                <option value="laboratory">🔬 Laboratory</option>
                 <option value="admin">⚙️ Admin</option>
             </select>
             
-            <button class="btn" type="submit">Login</button>
+            <button class="btn" type="submit" style="margin-top:8px;">Sign In to Portal</button>
         </form>
 
-        <hr style="margin:14px 0">
+        <div style="border-top:1px solid var(--card-border);margin:20px 0 16px 0;"></div>
 
-        <a class="link" href="register.php">👤 New Patient? Register</a>
-        <a class="link" href="hospital_add.php">🏥 Hospital / Laboratory? Register</a>
-        <a class="link" href="register_doctor.php">👨‍⚕️ Doctor? Register</a>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <a class="link" href="register.php" style="margin-top:0;">👤 New Patient? Create Account &rarr;</a>
+            <a class="link" href="hospital_add.php" style="margin-top:0;">🏥 Register Hospital or Laboratory &rarr;</a>
+            <a class="link" href="register_doctor.php" style="margin-top:0;">🩺 Affiliated Doctor? Register &rarr;</a>
+        </div>
     </div>
 </div>
 

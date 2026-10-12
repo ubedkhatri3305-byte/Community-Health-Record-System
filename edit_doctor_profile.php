@@ -137,74 +137,8 @@ if (isset($_POST['change_password'])) {
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit Profile</title>
-
-<style>
-body{
-  font-family:Segoe UI;
-  background:#f4f7fb;
-  margin:0;
-}
-
-.container{
-  max-width:600px;
-  margin:auto;
-  padding:15px;
-}
-
-.card{
-  background:white;
-  padding:20px;
-  border-radius:12px;
-  box-shadow:0 5px 15px rgba(0,0,0,0.08);
-}
-
-.input{
-  width:100%;
-  padding:12px;
-  margin:8px 0;
-  border:1px solid #ddd;
-  border-radius:8px;
-  font-size:14px;
-}
-
-.btn{
-  width:100%;
-  padding:12px;
-  background:#2563eb;
-  color:white;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
-
-.btn:hover{
-  background:#1e40af;
-}
-
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  margin-bottom:15px;
-}
-
-.msg{
-  padding:10px;
-  border-radius:8px;
-  margin-bottom:10px;
-}
-
-.success{
-  background:#d1fae5;
-  color:#065f46;
-}
-
-.error{
-  background:#fee2e2;
-  color:#991b1b;
-}
-</style>
+<title>Edit Doctor Profile - CHR</title>
+<link rel="stylesheet" href="assets/css/styles.css">
 </head>
 
 <body>

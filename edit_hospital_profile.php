@@ -60,77 +60,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Edit Hospital Profile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Edit Hospital Profile - CHR</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
 
     <style>
-        body{
-            font-family: Arial;
-            background:#f5f7fa;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            min-height:100vh;
+        .time-box {
+            display: flex;
+            gap: 12px;
         }
-
-        .card{
-            width:430px;
-            background:#fff;
-            padding:25px;
-            border-radius:14px;
-            box-shadow:0 10px 25px rgba(0,0,0,0.08);
-        }
-
-        h2{
-            text-align:center;
-            color:#1976d2;
-        }
-
-        input{
-            width:100%;
-            padding:10px;
-            margin:6px 0;
-            border:1px solid #ddd;
-            border-radius:8px;
-        }
-
-        .time-box{
-            display:flex;
-            gap:10px;
-        }
-
-        button{
-            width:100%;
-            padding:12px;
-            background:#1976d2;
-            color:#fff;
-            border:none;
-            border-radius:8px;
-            cursor:pointer;
-            font-weight:bold;
-        }
-
-        button:hover{
-            background:#125ca1;
-        }
-
-        a{
-            display:block;
-            text-align:center;
-            margin-top:10px;
-            color:#1976d2;
-            text-decoration:none;
-        }
-
-        .label{
-            font-size:12px;
-            color:#6b7280;
-            margin-top:8px;
+        .label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 8px 0 4px 0;
+            display: block;
+            font-weight: 500;
         }
     </style>
-
 </head>
 
-<body>
+<body class="center" style="min-height:100vh;">
 
 <div class="card">
 

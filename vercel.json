@@ -1,11 +1,9 @@
 {
   "version": 2,
   "functions": {
-    "api/**/*.php": {
-      "runtime": "vercel-php@0.7.2"
-    },
-    "*.php": {
-      "runtime": "vercel-php@0.7.2"
+    "api/index.php": {
+      "runtime": "vercel-php@0.7.2",
+      "includeFiles": "*.php"
     }
   },
   "routes": [
@@ -18,16 +16,8 @@
       "dest": "/uploads/$1"
     },
     {
-      "src": "/(.*\\.php)",
-      "dest": "/$1"
-    },
-    {
-      "src": "/",
-      "dest": "/index.php"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/index.php"
+      "dest": "/api/index.php"
     }
   ]
 }

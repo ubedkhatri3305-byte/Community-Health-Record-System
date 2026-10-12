@@ -73,20 +73,35 @@ Since Render's free tier provides PostgreSQL, you can use any free MySQL provide
 
 ---
 
-### Option 2: Deploying to Vercel
+### Option 2: Deploying to Vercel (Ready & Configured ⭐)
 
-The project includes [`vercel.json`](vercel.json) using the community `vercel-php` runtime.
+The project includes a unified Serverless Router in [`api/index.php`](api/index.php) and [`vercel.json`](vercel.json) using the `vercel-php` runtime.
 
-> ⚠️ **Important Vercel Considerations:**
-> - Vercel functions are **serverless**: local files uploaded to `uploads/` will not persist across requests unless stored on an external cloud storage provider (such as AWS S3 or Cloudinary).
-> - PHP session files stored in `/tmp` are stateless across different serverless invocations.
-> - For full production stability with PHP sessions and file uploads, **Render** is recommended.
+#### Highlights of the Vercel Architecture:
+- **1-Function Router**: Dispatches all 35+ pages through a single serverless function (`api/index.php`), staying safely within Vercel Hobby tier's 12-function limit.
+- **Stateless HMAC Sessions**: Built-in `ServerlessCookieSessionHandler` stores authenticated sessions in cryptographically signed HTTP-only cookies, eliminating session drops across serverless container restarts.
+- **Edge CDN Static Assets**: Stylesheet and client assets under `/assets/` are served with ultra-low latency from Vercel's global edge network.
 
-#### Deployment Steps:
-1. Import the repository in [Vercel](https://vercel.com/new).
-2. Set Environment Variables in Project Settings:
-   - `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_PORT`
-3. Click **Deploy**.
+#### Step-by-Step Vercel Deployment:
+1. Push your repository to GitHub:
+   ```bash
+   git add .
+   git commit -m "Configure Vercel deployment and enhanced UI"
+   git push origin main
+   ```
+2. Create a free Cloud MySQL Database (e.g. at [TiDB Cloud Free Tier](https://tidbcloud.com/) or [Aiven](https://aiven.io/)):
+   - Create your cluster and database `chr_db`.
+   - Import [`database.sql`](database.sql) into your cloud database.
+3. Import the repository in [Vercel](https://vercel.com/new).
+4. In Vercel Project Settings &rarr; **Environment Variables**, configure:
+   - `DB_HOST`: *Your cloud MySQL host*
+   - `DB_USER`: *Your cloud MySQL username*
+   - `DB_PASS`: *Your cloud MySQL password*
+   - `DB_NAME`: `chr_db`
+   - `DB_PORT`: `3306` *(or `4000` for TiDB)*
+   - `DB_SSL`: `true` *(for TiDB / Aiven)*
+   - `SESSION_SECRET`: *(Optional: any random 32-character secret string)*
+5. Click **Deploy**. Your Community Health Record System will be live at `https://your-project.vercel.app`!
 
 ---
 
