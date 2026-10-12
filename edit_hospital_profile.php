@@ -26,12 +26,13 @@ if (!$data) {
 /* 🔥 UPDATE PROFILE */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $name      = $_POST['name'] ?? '';
-    $email     = $_POST['email'] ?? '';
-    $phone     = $_POST['phone'] ?? '';
-    $address   = $_POST['address'] ?? '';
-    $open_time = $_POST['open_time'] ?? null;
-    $close_time = $_POST['close_time'] ?? null;
+    $name      = trim($_POST['name'] ?? '');
+    $email     = trim($_POST['email'] ?? '');
+    $phone     = trim($_POST['phone'] ?? '');
+    $address   = trim($_POST['address'] ?? '');
+
+    $open_time  = !empty($_POST['open_time']) ? date('H:i:s', strtotime($_POST['open_time'])) : '09:00:00';
+    $close_time = !empty($_POST['close_time']) ? date('H:i:s', strtotime($_POST['close_time'])) : '18:00:00';
 
     $stmt = $mysqli->prepare("
         UPDATE hospitals 
@@ -50,10 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hospital_id
     );
 
-    $stmt->execute();
-
-    header("Location: hospital_dashboard.php");
-    exit;
+    try {
+        $stmt->execute();
+        header("Location: hospital_dashboard.php");
+        exit;
+    } catch (Throwable $e) {
+        $msg = "Error updating profile: " . $e->getMessage();
+    }
 }
 ?>
 

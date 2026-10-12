@@ -13,14 +13,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $latitude = isset($_POST['latitude']) ? (float)$_POST['latitude'] : NULL;
     $longitude = isset($_POST['longitude']) ? (float)$_POST['longitude'] : NULL;
 
-    // 🔥 CONVERT TIME TO AM/PM
-    function convertTo12Hour($time) {
-        if (!$time) return "";
-        return date("h:i A", strtotime($time));
+    // Format time for MySQL TIME column (H:i:s)
+    function formatMySQLTime($time, $fallback = '09:00:00') {
+        if (empty($time)) return $fallback;
+        $ts = strtotime($time);
+        return $ts !== false ? date('H:i:s', $ts) : $fallback;
     }
 
-    $open  = convertTo12Hour($_POST['open_time']);
-    $close = convertTo12Hour($_POST['close_time']);
+    $open  = formatMySQLTime($_POST['open_time'] ?? '', '09:00:00');
+    $close = formatMySQLTime($_POST['close_time'] ?? '', '18:00:00');
 
     $email   = trim($_POST['email']);
     $password= $_POST['password'];
@@ -35,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->store_result();
 
         if ($stmt->num_rows > 0) {
-            $msg = "❌ Email already exists!";
+            $msg = "❌ This email address is already registered!";
         } else {
 
             $address = "$city, $state, $country";
@@ -51,8 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $type, $name, $address, $phone, $open, $close, $email, $password_hash, $latitude, $longitude
             );
 
-            $stmt->execute();
-            $msg = "✅ Registered Successfully!";
+            try {
+                if ($stmt->execute()) {
+                    $msg = "✅ Registered Successfully! You can now log in.";
+                } else {
+                    $msg = "❌ Registration failed. Please try again.";
+                }
+            } catch (Throwable $e) {
+                if ($e->getCode() == 1062) {
+                    $msg = "❌ This email address is already registered!";
+                } else {
+                    $msg = "❌ Registration error: " . $e->getMessage();
+                }
+            }
         }
     }
 }
