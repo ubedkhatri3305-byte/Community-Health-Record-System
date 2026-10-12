@@ -119,21 +119,39 @@ if (!$mysqli) {
 
 $mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
 
+$conn_error = '';
+
 // Helper function to safely attempt real_connect without crashing on PHP 8.1+ exceptions
-$attempt_connect = function($host, $user, $pass, $name, $port, $ssl) use ($mysqli) {
+$attempt_connect = function($host, $user, $pass, $name, $port, $ssl) use ($mysqli, &$conn_error) {
     try {
         if ($ssl) {
             $mysqli->ssl_set(NULL, NULL, NULL, NULL, NULL);
-            return @$mysqli->real_connect($host, $user, $pass, $name, $port, NULL, MYSQLI_CLIENT_SSL);
+            $res = @$mysqli->real_connect($host, $user, $pass, $name, $port, NULL, MYSQLI_CLIENT_SSL);
         } else {
-            return @$mysqli->real_connect($host, $user, $pass, $name, $port);
+            $res = @$mysqli->real_connect($host, $user, $pass, $name, $port);
         }
+        if (!$res) {
+            $conn_error = $mysqli->connect_error ?: "Unknown connection failure (errno " . $mysqli->connect_errno . ")";
+        }
+        return $res;
     } catch (Throwable $e) {
+        $conn_error = $e->getMessage();
         return false;
     }
 };
 
 $connected = $attempt_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT, $DB_SSL);
+
+// If failed due to database not existing yet (e.g. fresh TiDB cluster), try connecting to server root and creating database
+if (!$connected && $DB_HOST !== 'localhost' && $DB_HOST !== '127.0.0.1') {
+    if ($attempt_connect($DB_HOST, $DB_USER, $DB_PASS, null, $DB_PORT, $DB_SSL)) {
+        @$mysqli->query("CREATE DATABASE IF NOT EXISTS `" . $mysqli->real_escape_string($DB_NAME) . "` DEFAULT CHARACTER SET utf8mb4");
+        if (@$mysqli->select_db($DB_NAME)) {
+            $connected = true;
+            $conn_error = '';
+        }
+    }
+}
 
 // If failed and host was localhost or 127.0.0.1, try alternative local binding
 if (!$connected && ($DB_HOST === 'localhost' || $DB_HOST === '127.0.0.1')) {
@@ -146,7 +164,8 @@ if (!$connected && ($DB_HOST === 'localhost' || $DB_HOST === '127.0.0.1')) {
 
 if (!$connected || $mysqli->connect_errno) {
     if ($is_serverless) {
-        // Helpful setup UI when deployed to Vercel without configured cloud database
+        $has_custom_host = ($DB_HOST !== 'localhost' && $DB_HOST !== '127.0.0.1');
+        $has_pass = !empty($DB_PASS);
         http_response_code(500);
         ?>
         <!DOCTYPE html>
@@ -154,28 +173,51 @@ if (!$connected || $mysqli->connect_errno) {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>CHR - Database Setup Required</title>
+            <title>CHR - Database Status & Setup</title>
             <link rel="stylesheet" href="assets/css/styles.css">
         </head>
-        <body class="center" style="min-height:100vh;background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:#f8fafc;">
-            <div class="card" style="max-width:560px;width:90%;margin:20px;padding:32px;background:#ffffff;color:#1e293b;border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+        <body class="center" style="min-height:100vh;background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:#f8fafc;padding:20px 0;">
+            <div class="card" style="max-width:620px;width:92%;margin:auto;padding:32px;background:#ffffff;color:#1e293b;border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
                 <div class="logo" style="background:#eff6ff;color:#2563eb;font-size:32px;">🏥</div>
-                <h2 style="color:#1e3a8a;margin-bottom:8px;">Cloud Database Required on Vercel</h2>
-                <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:20px;">
-                    Your CHR system is live on Vercel! To connect your database, please configure your Cloud MySQL credentials in your <strong>Vercel Dashboard &rarr; Project Settings &rarr; Environment Variables</strong>:
-                </p>
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;font-family:monospace;font-size:13px;line-height:1.8;margin-bottom:20px;">
-                    <div><strong>DB_HOST</strong>: your-mysql-host.cloud</div>
-                    <div><strong>DB_USER</strong>: your-username</div>
-                    <div><strong>DB_PASS</strong>: your-password</div>
-                    <div><strong>DB_NAME</strong>: chr_db</div>
-                    <div><strong>DB_PORT</strong>: 3306 (or 4000)</div>
-                    <div><strong>DB_SSL</strong>: true (if using TiDB / Aiven)</div>
+                <h2 style="color:#1e3a8a;margin-bottom:6px;">Cloud Database Connection Status</h2>
+                
+                <?php if (!$has_custom_host): ?>
+                <!-- ALERT: Variables Not Detected Yet -->
+                <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:16px;margin:16px 0;color:#92400e;">
+                    <strong>⚠️ Action Needed: Click "Redeploy" in Vercel!</strong><br>
+                    <p style="font-size:13px;margin:6px 0 0 0;line-height:1.5;">
+                        If you already added Environment Variables in Vercel Project Settings, Vercel requires you to trigger a <strong>Redeploy</strong> for those variables to be activated on the live site!
+                    </p>
                 </div>
-                <p style="font-size:12px;color:#94a3b8;margin-bottom:20px;">
-                    Free Cloud MySQL providers supported: <strong>TiDB Cloud (Free Serverless)</strong>, <strong>Aiven MySQL</strong>, or <strong>Railway</strong>. Import your <code>database.sql</code> file into the cloud database.
-                </p>
-                <button class="btn" onclick="location.reload()">🔄 Retry Connection</button>
+                <?php else: ?>
+                <!-- ALERT: Variables Detected but Connection Error -->
+                <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;padding:16px;margin:16px 0;color:#991b1b;">
+                    <strong>❌ MySQL Error:</strong><br>
+                    <code style="display:block;margin-top:6px;font-size:13px;background:rgba(255,255,255,0.7);padding:8px;border-radius:6px;word-break:break-all;">
+                        <?= htmlspecialchars($conn_error ?: 'Connection timed out or access denied') ?>
+                    </code>
+                </div>
+                <?php endif; ?>
+
+                <p style="color:#64748b;font-size:13px;margin-bottom:12px;font-weight:600;">Current Environment Variables Detected by Vercel:</p>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;font-family:monospace;font-size:13px;line-height:1.9;margin-bottom:20px;">
+                    <div><strong>DB_HOST</strong>: <?= htmlspecialchars($DB_HOST) ?> <?= $has_custom_host ? '✅' : '❌ (Not detected)' ?></div>
+                    <div><strong>DB_USER</strong>: <?= htmlspecialchars($DB_USER) ?> <?= !empty($DB_USER) && $DB_USER !== 'root' ? '✅' : '' ?></div>
+                    <div><strong>DB_PASS</strong>: <?= $has_pass ? '•••••••• (Detected) ✅' : '❌ (Missing / Empty)' ?></div>
+                    <div><strong>DB_NAME</strong>: <?= htmlspecialchars($DB_NAME) ?></div>
+                    <div><strong>DB_PORT</strong>: <?= htmlspecialchars($DB_PORT) ?></div>
+                    <div><strong>DB_SSL</strong>: <?= $DB_SSL ? 'true ✅' : 'false (Set to true for TiDB/Aiven)' ?></div>
+                </div>
+
+                <div style="background:#eff6ff;border-radius:10px;padding:14px;font-size:13px;color:#1e40af;line-height:1.6;margin-bottom:20px;">
+                    <strong>How to apply Environment Variables in Vercel:</strong><br>
+                    1. Go to <strong>Vercel Dashboard &rarr; Deployments</strong> tab.<br>
+                    2. Click the three dots (<strong>...</strong>) on the latest deployment.<br>
+                    3. Click <strong>Redeploy</strong> (with the checkbox "Use existing Build Cache" or clean build).<br>
+                    4. Once redeployed, reload this page!
+                </div>
+
+                <button class="btn" onclick="location.reload()">🔄 Refresh Page</button>
             </div>
         </body>
         </html>
@@ -184,6 +226,21 @@ if (!$connected || $mysqli->connect_errno) {
     } else {
         die("Database connection failed: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . 
             "<br><small>Host: " . htmlspecialchars($DB_HOST) . " | Port: " . htmlspecialchars($DB_PORT) . " | Database: " . htmlspecialchars($DB_NAME) . "</small>");
+    }
+}
+
+// Auto-import database schema if tables are missing (e.g. brand new TiDB database)
+if ($connected && $DB_HOST !== 'localhost' && $DB_HOST !== '127.0.0.1') {
+    $tbl_check = @$mysqli->query("SHOW TABLES LIKE 'users'");
+    if ($tbl_check && $tbl_check->num_rows === 0) {
+        $sql_file = __DIR__ . '/database.sql';
+        if (file_exists($sql_file)) {
+            $dump = file_get_contents($sql_file);
+            $dump = preg_replace('/CREATE DATABASE[^;]+;/i', '', $dump);
+            $dump = preg_replace('/USE[^;]+;/i', '', $dump);
+            @$mysqli->multi_query($dump);
+            while (@$mysqli->next_result()) {;}
+        }
     }
 }
 
