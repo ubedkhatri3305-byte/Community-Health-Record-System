@@ -244,6 +244,7 @@ function initialize_chr_tables($mysqli) {
           `hospital` varchar(255) DEFAULT NULL,
           `hospital_id` int(11) DEFAULT NULL,
           `specialization` varchar(100) DEFAULT NULL,
+          `qualification` varchar(100) DEFAULT NULL,
           PRIMARY KEY (`id`),
           UNIQUE KEY `email` (`email`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -349,22 +350,51 @@ function initialize_chr_tables($mysqli) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     ];
 
-    foreach ($tables as $sql) {
-        @$mysqli->query($sql);
-    }
+    // Suppress MySQLi exceptions during schema initialization
+    $driver = new mysqli_driver();
+    $orig_report = $driver->report_mode;
+    $driver->report_mode = MYSQLI_REPORT_OFF;
 
-    // Safe column migrations to guarantee full schema compatibility across older/newer setups
-    $migrations = [
-        "ALTER TABLE users ADD COLUMN qualification varchar(100) DEFAULT NULL",
-        "ALTER TABLE users ADD COLUMN specialization varchar(100) DEFAULT NULL",
-        "ALTER TABLE users ADD COLUMN hospital_id int(11) DEFAULT NULL",
-        "ALTER TABLE appointments ADD COLUMN rescheduled_date date DEFAULT NULL",
-        "ALTER TABLE appointments ADD COLUMN rescheduled_time time DEFAULT NULL",
-        "ALTER TABLE appointments ADD COLUMN reschedule_msg text DEFAULT NULL",
-        "ALTER TABLE appointments ADD COLUMN reschedule_note text DEFAULT NULL"
-    ];
-    foreach ($migrations as $m) {
-        @$mysqli->query($m);
+    try {
+        // Only run CREATE TABLE queries if users table is not present
+        $checkUsers = $mysqli->query("SHOW TABLES LIKE 'users'");
+        if (!$checkUsers || $checkUsers->num_rows === 0) {
+            foreach ($tables as $sql) {
+                try {
+                    $mysqli->query($sql);
+                } catch (Throwable $e) {}
+            }
+        }
+
+        // Safe column migrations: check if column exists before ALTER TABLE
+        $migrations = [
+            "users" => [
+                "qualification"  => "ALTER TABLE users ADD COLUMN qualification varchar(100) DEFAULT NULL",
+                "specialization" => "ALTER TABLE users ADD COLUMN specialization varchar(100) DEFAULT NULL",
+                "hospital_id"    => "ALTER TABLE users ADD COLUMN hospital_id int(11) DEFAULT NULL"
+            ],
+            "appointments" => [
+                "rescheduled_date" => "ALTER TABLE appointments ADD COLUMN rescheduled_date date DEFAULT NULL",
+                "rescheduled_time" => "ALTER TABLE appointments ADD COLUMN rescheduled_time time DEFAULT NULL",
+                "reschedule_msg"   => "ALTER TABLE appointments ADD COLUMN reschedule_msg text DEFAULT NULL",
+                "reschedule_note"  => "ALTER TABLE appointments ADD COLUMN reschedule_note text DEFAULT NULL"
+            ]
+        ];
+
+        foreach ($migrations as $table => $columns) {
+            foreach ($columns as $col => $alterSql) {
+                try {
+                    $check = $mysqli->query("SHOW COLUMNS FROM `$table` LIKE '$col'");
+                    if ($check && $check->num_rows === 0) {
+                        $mysqli->query($alterSql);
+                    }
+                } catch (Throwable $e) {}
+            }
+        }
+    } catch (Throwable $e) {
+        // Silently handle any initialization issue
+    } finally {
+        $driver->report_mode = $orig_report;
     }
 }
 
