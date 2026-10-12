@@ -7,52 +7,63 @@ $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $title = trim($_POST['title']);
-    $description = trim($_POST['description']);
-    $record_date = $_POST['record_date'];
+    $title = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $record_date = !empty($_POST['record_date']) ? $_POST['record_date'] : date('Y-m-d');
 
     $file_path = NULL;
 
     // Upload file
     if (!empty($_FILES['report']['name'])) {
-
         $upload_dir = "uploads/";
         if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+            @mkdir($upload_dir, 0777, true);
         }
 
-        $filename = time() . "_" . basename($_FILES['report']['name']);
-        $target = $upload_dir . $filename;
+        $safe_name = time() . "_" . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', basename($_FILES['report']['name']));
+        $target = $upload_dir . $safe_name;
 
-        if (move_uploaded_file($_FILES['report']['tmp_name'], $target)) {
+        if (@move_uploaded_file($_FILES['report']['tmp_name'], $target)) {
             $file_path = $target;
         } else {
-            $error = "File upload failed!";
+            $temp_dir = sys_get_temp_dir() . "/uploads/";
+            if (!is_dir($temp_dir)) {
+                @mkdir($temp_dir, 0777, true);
+            }
+            if (@move_uploaded_file($_FILES['report']['tmp_name'], $temp_dir . $safe_name)) {
+                $file_path = "uploads/" . $safe_name;
+            } else {
+                $error = "File upload failed!";
+            }
         }
     }
 
     // Save record
     if ($error === "") {
-        $stmt = $mysqli->prepare("
-            INSERT INTO records
-            (user_id, title, description, record_date, file_path)
-            VALUES (?, ?, ?, ?, ?)
-        ");
+        try {
+            $stmt = $mysqli->prepare("
+                INSERT INTO records
+                (user_id, title, description, record_date, file_path)
+                VALUES (?, ?, ?, ?, ?)
+            ");
 
-        $stmt->bind_param(
-            "issss",
-            $user['id'],
-            $title,
-            $description,
-            $record_date,
-            $file_path
-        );
+            $stmt->bind_param(
+                "issss",
+                $user['id'],
+                $title,
+                $description,
+                $record_date,
+                $file_path
+            );
 
-        if ($stmt->execute()) {
-            header("Location: dashboard_patient.php");
-            exit;
-        } else {
-            $error = "Record not saved!";
+            if ($stmt->execute()) {
+                header("Location: dashboard_patient.php");
+                exit;
+            } else {
+                $error = "Record not saved!";
+            }
+        } catch (Throwable $e) {
+            $error = "Database error: " . $e->getMessage();
         }
     }
 }

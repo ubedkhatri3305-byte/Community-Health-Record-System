@@ -14,14 +14,19 @@ $search = $_GET['search'] ?? '';
 
 /* 🔥 DELETE DOCTOR */
 if (isset($_GET['delete'])) {
-    $doctor_id = $_GET['delete'];
+    $doctor_id = (int)$_GET['delete'];
 
-    $stmt = $mysqli->prepare("
-        DELETE FROM users 
-        WHERE id=? AND hospital_id=? AND role='doctor'
-    ");
-    $stmt->bind_param("ii", $doctor_id, $hospital_id);
-    $stmt->execute();
+    try {
+        @$mysqli->query("DELETE FROM doctor_profiles WHERE doctor_id = $doctor_id");
+        $stmt = $mysqli->prepare("
+            DELETE FROM users 
+            WHERE id=? AND hospital_id=? AND role='doctor'
+        ");
+        $stmt->bind_param("ii", $doctor_id, $hospital_id);
+        $stmt->execute();
+    } catch (Throwable $e) {
+        // Handled cleanly
+    }
 
     header("Location: hospital_dashboard.php");
     exit;

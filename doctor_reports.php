@@ -8,7 +8,7 @@ $user = current_user($mysqli);
 
 /* ================= GET ALL PATIENTS FOR THIS DOCTOR ================= */
 $stmt = $mysqli->prepare("
-    SELECT DISTINCT
+    SELECT 
         u.id,
         u.name,
         u.email,
@@ -18,7 +18,7 @@ $stmt = $mysqli->prepare("
     JOIN appointments a ON u.id = a.patient_id
     LEFT JOIN lab_reports lr ON u.id = lr.patient_id
     WHERE a.doctor_id = ? AND a.status = 'accepted'
-    GROUP BY u.id
+    GROUP BY u.id, u.name, u.email, u.phone
     ORDER BY u.name ASC
 ");
 $stmt->bind_param("i", $doctor_id);
@@ -375,10 +375,11 @@ function viewPatientReports(patientId, patientName) {
                                 📅 ${report.uploaded_at || 'N/A'}
                             </div>
                             <div class="report-file">
-                                <a href="uploads/${report.report_file}" target="_blank">
+                                <?php $dummy = 1; ?>
+                                <a href="${report.report_file.startsWith('uploads/') ? report.report_file : 'uploads/' + report.report_file}" target="_blank">
                                     📥 Download Report
                                 </a> | 
-                                <a href="uploads/${report.report_file}" target="_blank">
+                                <a href="${report.report_file.startsWith('uploads/') ? report.report_file : 'uploads/' + report.report_file}" target="_blank">
                                     👁️ View Report
                                 </a>
                             </div>

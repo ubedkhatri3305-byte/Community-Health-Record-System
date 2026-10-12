@@ -262,12 +262,13 @@ $res = $stmt->get_result();
 
 while($r = $res->fetch_assoc()){
 
-$start = $r['appt_date']."T".$r['appt_time'];
+$time_val = !empty($r['appt_time']) ? substr($r['appt_time'], 0, 8) : '09:00:00';
+$start = $r['appt_date'] . "T" . $time_val;
 
 echo "{
-  title: '".addslashes($r['patient_name'])."',
+  title: '".addslashes($r['patient_name'] ?? 'Patient')."',
   start: '$start',
-  url: 'view_patient.php?patient_id=".$r['patient_id']."'
+  url: 'view_patient.php?patient_id=".(int)$r['patient_id']."'
 },";
 }
 ?>

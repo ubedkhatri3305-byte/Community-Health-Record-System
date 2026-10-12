@@ -18,25 +18,29 @@ $appt = $check->get_result()->fetch_assoc();
 if (!$appt) exit("invalid");
 
 /* ================= HANDLE RESCHEDULE ================= */
-if ($status === 'reschedule') {
+try {
+    if ($status === 'reschedule') {
 
-    $new_date = $_POST['new_date'] ?? '';
-    $new_time = $_POST['new_time'] ?? '';
+        $new_date = $_POST['new_date'] ?? '';
+        $raw_time = trim($_POST['new_time'] ?? '');
 
-    if (!$new_date) exit("missing date");
+        if (!$new_date) exit("missing date");
 
-    $stmt = $mysqli->prepare("
-        UPDATE appointments 
-        SET rescheduled_date = ?,
-            rescheduled_time = ?,
-            reschedule_msg   = 'Doctor rescheduled your appointment',
-            status           = 'rescheduled'
-        WHERE id = ? AND doctor_id = ?
-    ");
-    $stmt->bind_param("ssii", $new_date, $new_time, $id, $doctor_id);
-    $stmt->execute();
+        // Format safely for MySQL TIME column (H:i:s)
+        $new_time = (!empty($raw_time) && strtotime($raw_time)) ? date('H:i:s', strtotime($raw_time)) : '10:00:00';
 
-    $msg = "Your appointment has been rescheduled to $new_date at $new_time by your doctor.";
+        $stmt = $mysqli->prepare("
+            UPDATE appointments 
+            SET rescheduled_date = ?,
+                rescheduled_time = ?,
+                reschedule_msg   = 'Doctor rescheduled your appointment',
+                status           = 'rescheduled'
+            WHERE id = ? AND doctor_id = ?
+        ");
+        $stmt->bind_param("ssii", $new_date, $new_time, $id, $doctor_id);
+        $stmt->execute();
+
+        $msg = "Your appointment has been rescheduled to $new_date at " . substr($new_time, 0, 5) . " by your doctor.";
 
 /* ================= HANDLE ACCEPT / REJECT ================= */
 } elseif (in_array($status, ['accepted', 'rejected'])) {
@@ -73,3 +77,6 @@ if ($row) {
 }
 
 echo "success";
+} catch (Throwable $e) {
+    exit("error: " . $e->getMessage());
+}

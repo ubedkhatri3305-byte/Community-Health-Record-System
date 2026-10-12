@@ -5,6 +5,11 @@ require 'config.php';
 /* 🔁 IF ALREADY LOGGED IN */
 if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
 
+    if ($_SESSION['role'] === 'admin') {
+        header("Location: dashboard_admin.php");
+        exit;
+    }
+
     if ($_SESSION['role'] === 'doctor') {
         header("Location: dashboard_doctor.php");
         exit;
@@ -26,62 +31,67 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
     }
 }
 
-$msg = "";
+$msg = !empty($_GET['msg']) ? $_GET['msg'] : "";
 
 /* 🔐 LOGIN */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $role = $_POST['role'];
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? '';
 
     if (empty($email) || empty($password) || empty($role)) {
         $msg = "❌ Please fill all fields!";
     } else {
+        try {
+            /* 🔴 HOSPITAL / LAB LOGIN */
+            if ($role === 'hospital' || $role === 'laboratory') {
 
-        /* 🔴 HOSPITAL / LAB LOGIN */
-        if ($role === 'hospital' || $role === 'laboratory') {
-
-            $stmt = $mysqli->prepare("SELECT * FROM hospitals WHERE email=? AND type=?");
-            $stmt->bind_param("ss", $email, $role);
-
-        } else {
-
-            /* 🔵 USERS TABLE */
-            $stmt = $mysqli->prepare("SELECT * FROM users WHERE email=? AND role=?");
-            $stmt->bind_param("ss", $email, $role);
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($row = $result->fetch_assoc()) {
-
-            if (password_verify($password, $row['password'])) {
-
-                /* ✅ SESSION SET */
-                $_SESSION['user_id'] = $row['id'];
-                $_SESSION['role'] = $role;
-                $_SESSION['name'] = $row['name'];
-
-                /* 🔁 REDIRECT */
-                if ($role === 'hospital') {
-                    header("Location: hospital_dashboard.php");
-                } elseif ($role === 'laboratory') {
-                    header("Location: laboratory_dashboard.php");
-                } elseif ($role === 'doctor') {
-                    header("Location: dashboard_doctor.php");
-                } else {
-                    header("Location: dashboard_patient.php");
-                }
-                exit;
+                $stmt = $mysqli->prepare("SELECT * FROM hospitals WHERE email=? AND type=?");
+                $stmt->bind_param("ss", $email, $role);
 
             } else {
-                $msg = "❌ Wrong Password!";
+
+                /* 🔵 USERS TABLE */
+                $stmt = $mysqli->prepare("SELECT * FROM users WHERE email=? AND role=?");
+                $stmt->bind_param("ss", $email, $role);
             }
 
-        } else {
-            $msg = "❌ User not found!";
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($row = $result->fetch_assoc()) {
+
+                if (password_verify($password, $row['password'])) {
+
+                    /* ✅ SESSION SET */
+                    $_SESSION['user_id'] = $row['id'];
+                    $_SESSION['role'] = $role;
+                    $_SESSION['name'] = $row['name'];
+
+                    /* 🔁 REDIRECT */
+                    if ($role === 'hospital') {
+                        header("Location: hospital_dashboard.php");
+                    } elseif ($role === 'laboratory') {
+                        header("Location: laboratory_dashboard.php");
+                    } elseif ($role === 'doctor') {
+                        header("Location: dashboard_doctor.php");
+                    } elseif ($role === 'admin') {
+                        header("Location: dashboard_admin.php");
+                    } else {
+                        header("Location: dashboard_patient.php");
+                    }
+                    exit;
+
+                } else {
+                    $msg = "❌ Wrong Password!";
+                }
+
+            } else {
+                $msg = "❌ User not found!";
+            }
+        } catch (Throwable $e) {
+            $msg = "❌ Login error: " . $e->getMessage();
         }
     }
 }

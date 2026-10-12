@@ -44,6 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: laboratory_dashboard.php");
             } elseif ($role === 'doctor') {
                 header("Location: dashboard_doctor.php");
+            } elseif ($role === 'admin') {
+                header("Location: dashboard_admin.php");
             } else {
                 header("Location: dashboard_patient.php");
             }

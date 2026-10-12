@@ -16,33 +16,33 @@ if ($lat && $lng) {
     $sql = "
     SELECT 
         u.*, 
-        d.specialization,
+        COALESCE(d.specialization, u.specialization, 'General Practitioner') AS specialization,
         h.id AS hospital_id,
-        h.name AS hospital_name,
-        h.city,
+        COALESCE(h.name, 'Independent Practice') AS hospital_name,
+        COALESCE(h.city, u.location, 'Available') AS city,
 
         ROUND(
             6371 * acos(
                 cos(radians(?)) *
-                cos(radians(h.latitude)) *
-                cos(radians(h.longitude) - radians(?)) +
+                cos(radians(COALESCE(h.latitude, 0))) *
+                cos(radians(COALESCE(h.longitude, 0)) - radians(?)) +
                 sin(radians(?)) *
-                sin(radians(h.latitude))
+                sin(radians(COALESCE(h.latitude, 0)))
             ), 2
         ) AS distance
 
     FROM users u
-    JOIN doctor_profiles d ON u.id = d.doctor_id
-    JOIN hospitals h ON u.hospital_id = h.id
+    LEFT JOIN doctor_profiles d ON u.id = d.doctor_id
+    LEFT JOIN hospitals h ON u.hospital_id = h.id
 
     WHERE u.role='doctor'
 
     AND (
-        (? = '' OR u.name LIKE ? OR d.specialization LIKE ?)
+        (? = '' OR u.name LIKE ? OR d.specialization LIKE ? OR u.specialization LIKE ?)
     )
 
     AND (
-        (? = '' OR h.name LIKE ? OR h.city LIKE ?)
+        (? = '' OR h.name LIKE ? OR h.city LIKE ? OR u.location LIKE ?)
     )
 
     ORDER BY distance ASC
@@ -51,10 +51,10 @@ if ($lat && $lng) {
     $stmt = $mysqli->prepare($sql);
 
     $stmt->bind_param(
-        "dddssssss",
+        "dddssssssss",
         $lat, $lng, $lat,
-        $d, $search, $search,
-        $l, $loc, $loc
+        $d, $search, $search, $search,
+        $l, $loc, $loc, $loc
     );
 
 } else {
@@ -62,23 +62,23 @@ if ($lat && $lng) {
     $sql = "
     SELECT 
         u.*, 
-        d.specialization,
+        COALESCE(d.specialization, u.specialization, 'General Practitioner') AS specialization,
         h.id AS hospital_id,
-        h.name AS hospital_name,
-        h.city
+        COALESCE(h.name, 'Independent Practice') AS hospital_name,
+        COALESCE(h.city, u.location, 'Available') AS city
 
     FROM users u
-    JOIN doctor_profiles d ON u.id = d.doctor_id
-    JOIN hospitals h ON u.hospital_id = h.id
+    LEFT JOIN doctor_profiles d ON u.id = d.doctor_id
+    LEFT JOIN hospitals h ON u.hospital_id = h.id
 
     WHERE u.role='doctor'
 
     AND (
-        (? = '' OR u.name LIKE ? OR d.specialization LIKE ?)
+        (? = '' OR u.name LIKE ? OR d.specialization LIKE ? OR u.specialization LIKE ?)
     )
 
     AND (
-        (? = '' OR h.name LIKE ? OR h.city LIKE ?)
+        (? = '' OR h.name LIKE ? OR h.city LIKE ? OR u.location LIKE ?)
     )
 
     ORDER BY u.name
@@ -87,9 +87,9 @@ if ($lat && $lng) {
     $stmt = $mysqli->prepare($sql);
 
     $stmt->bind_param(
-        "ssssss",
-        $d, $search, $search,
-        $l, $loc, $loc
+        "ssssssss",
+        $d, $search, $search, $search,
+        $l, $loc, $loc, $loc
     );
 }
 
@@ -140,28 +140,30 @@ value="<?= htmlspecialchars($l) ?>">
 
 <div class="card" style="margin-bottom:10px;">
 
-<b><?= htmlspecialchars($r['name']) ?></b><br>
+<b><?= htmlspecialchars($r['name'] ?? '') ?></b><br>
 
-<?= htmlspecialchars($r['specialization']) ?><br>
+<?= htmlspecialchars($r['specialization'] ?? 'Doctor') ?><br>
 
-🏥 <?= htmlspecialchars($r['hospital_name']) ?><br>
+🏥 <?= htmlspecialchars($r['hospital_name'] ?? 'General Practice') ?><br>
 
-📍 <?= htmlspecialchars($r['city']) ?><br>
+📍 <?= htmlspecialchars($r['city'] ?? 'Available') ?><br>
 
 <?php if(isset($r['distance'])): ?>
-📏 <?= $r['distance'] ?> km<br>
+📏 <?= htmlspecialchars((string)$r['distance']) ?> km<br>
 <?php endif; ?>
 
 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
 <a class="btn" style="flex:1;min-width:140px;"
-href="appointments.php?doctor=<?= $r['id'] ?>">
+href="appointments.php?doctor=<?= (int)$r['id'] ?>">
 Book Appointment
 </a>
 
+<?php if(!empty($r['hospital_id'])): ?>
 <a class="btn" style="flex:1;min-width:140px;background:#10b981;"
-href="hospital_map.php?id=<?= $r['hospital_id'] ?>">
+href="hospital_map.php?id=<?= (int)$r['hospital_id'] ?>">
 📍 View Location
 </a>
+<?php endif; ?>
 </div>
 
 </div>

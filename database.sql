@@ -310,6 +310,7 @@ CREATE TABLE `users` (
   `hospital` varchar(255) DEFAULT NULL,
   `hospital_id` int(11) DEFAULT NULL,
   `specialization` varchar(100) DEFAULT NULL,
+  `qualification` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

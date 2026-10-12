@@ -53,8 +53,15 @@ $blockedFiles = [
 ];
 
 if (in_array($script, $blockedFiles) || !file_exists($targetFile) || !str_ends_with($script, '.php')) {
-    // If a static file was routed here by mistake
+    // If a static file or uploaded document was requested
     $staticFile = $rootDir . '/' . $path;
+    if (!file_exists($staticFile) && str_starts_with($path, 'uploads/')) {
+        $tempUpload = sys_get_temp_dir() . '/uploads/' . basename($path);
+        if (file_exists($tempUpload) && !is_dir($tempUpload)) {
+            $staticFile = $tempUpload;
+        }
+    }
+
     if (file_exists($staticFile) && !is_dir($staticFile)) {
         $ext = strtolower(pathinfo($staticFile, PATHINFO_EXTENSION));
         $mimes = [

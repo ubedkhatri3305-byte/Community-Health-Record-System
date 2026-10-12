@@ -19,50 +19,74 @@ $hospitalData = $hospital->get_result()->fetch_assoc();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $name  = $_POST['name'];
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+    $name  = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
     $pass  = password_hash($password, PASSWORD_DEFAULT);
 
-    $phone = $_POST['phone'];
-    $spec  = $_POST['specialization'];
-    $qualification = $_POST['qualification'];   // ✅ NEW FIELD
-    $loc   = $_POST['location'];
+    $phone = trim($_POST['phone'] ?? '');
+    $spec  = trim($_POST['specialization'] ?? '');
+    $qualification = trim($_POST['qualification'] ?? '');
+    $loc   = trim($_POST['location'] ?? '');
 
-    /* CHECK EMAIL */
-    $chk = $mysqli->prepare("SELECT id FROM users WHERE email=?");
-    $chk->bind_param("s", $email);
-    $chk->execute();
-    $chk->store_result();
-
-    if ($chk->num_rows > 0) {
-        $error = "❌ Email already exists!";
+    if (empty($name) || empty($email) || empty($password)) {
+        $error = "❌ Please fill all required fields!";
     } else {
+        try {
+            /* CHECK EMAIL */
+            $chk = $mysqli->prepare("SELECT id FROM users WHERE email=? LIMIT 1");
+            $chk->bind_param("s", $email);
+            $chk->execute();
+            $chk->store_result();
 
-        /* INSERT DOCTOR */
-        $stmt = $mysqli->prepare("
-            INSERT INTO users
-            (name, email, password, role, phone, specialization, qualification, location, hospital_id)
-            VALUES (?, ?, ?, 'doctor', ?, ?, ?, ?, ?)
-        ");
+            if ($chk->num_rows > 0) {
+                $error = "❌ Email already exists!";
+            } else {
+                /* INSERT DOCTOR INTO USERS */
+                $stmt = $mysqli->prepare("
+                    INSERT INTO users
+                    (name, email, password, role, phone, specialization, location, hospital_id)
+                    VALUES (?, ?, ?, 'doctor', ?, ?, ?, ?)
+                ");
 
-        $stmt->bind_param(
-            "sssssssi",
-            $name,
-            $email,
-            $pass,
-            $phone,
-            $spec,
-            $qualification,
-            $loc,
-            $hospital_id
-        );
+                $stmt->bind_param(
+                    "ssssssi",
+                    $name,
+                    $email,
+                    $pass,
+                    $phone,
+                    $spec,
+                    $loc,
+                    $hospital_id
+                );
 
-        if ($stmt->execute()) {
-            header("Location: hospital_dashboard.php");
-            exit;
-        } else {
-            $error = "❌ Error registering doctor!";
+                if ($stmt->execute()) {
+                    $new_doc_id = $stmt->insert_id;
+
+                    /* INSERT INTO DOCTOR PROFILES */
+                    $stmt_prof = $mysqli->prepare("
+                        INSERT INTO doctor_profiles (doctor_id, specialization, qualification, address)
+                        VALUES (?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE specialization=VALUES(specialization), qualification=VALUES(qualification)
+                    ");
+                    $stmt_prof->bind_param("isss", $new_doc_id, $spec, $qualification, $loc);
+                    $stmt_prof->execute();
+
+                    // Update qualification in users table if column exists
+                    @$mysqli->query("UPDATE users SET qualification = '" . $mysqli->real_escape_string($qualification) . "' WHERE id = " . (int)$new_doc_id);
+
+                    header("Location: hospital_dashboard.php");
+                    exit;
+                } else {
+                    $error = "❌ Error registering doctor!";
+                }
+            }
+        } catch (Throwable $e) {
+            if ($e->getCode() == 1062 || str_contains($e->getMessage(), 'Duplicate entry')) {
+                $error = "❌ Email already exists!";
+            } else {
+                $error = "❌ Registration error: " . $e->getMessage();
+            }
         }
     }
 }

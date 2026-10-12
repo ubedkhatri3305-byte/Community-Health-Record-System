@@ -56,13 +56,14 @@ $cal_stmt->execute();
 $cal_res    = $cal_stmt->get_result();
 $cal_events = [];
 while ($r = $cal_res->fetch_assoc()) {
-    $date  = !empty($r['rescheduled_date']) ? $r['rescheduled_date'] : $r['appt_date'];
-    $time  = !empty($r['rescheduled_time']) ? $r['rescheduled_time'] : $r['appt_time'];
-    $color = '#2563eb';
+    $date     = !empty($r['rescheduled_date']) ? $r['rescheduled_date'] : (!empty($r['appt_date']) ? $r['appt_date'] : date('Y-m-d'));
+    $raw_time = !empty($r['rescheduled_time']) ? $r['rescheduled_time'] : (!empty($r['appt_time']) ? $r['appt_time'] : '09:00:00');
+    $time     = substr($raw_time, 0, 8);
+    $color    = '#2563eb';
     if ($r['status'] === 'accepted')    $color = '#16a34a';
     if ($r['status'] === 'rejected')    $color = '#dc2626';
     if ($r['status'] === 'rescheduled') $color = '#d97706';
-    $cal_events[] = ['title' => $r['patient_name'], 'start' => $date . 'T' . $time, 'color' => $color];
+    $cal_events[] = ['title' => $r['patient_name'] ?? 'Patient', 'start' => $date . 'T' . $time, 'color' => $color];
 }
 ?>
 <!DOCTYPE html>

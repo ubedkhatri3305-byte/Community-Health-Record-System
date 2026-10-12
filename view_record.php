@@ -2,14 +2,17 @@
 require 'config.php';
 ensure_logged_in();
 
-$id = (int)$_GET['id'];
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$role = $_SESSION['role'] ?? 'patient';
+$dashboard = ($role === 'doctor') ? 'dashboard_doctor.php' : (($role === 'hospital') ? 'hospital_dashboard.php' : (($role === 'laboratory') ? 'laboratory_dashboard.php' : 'dashboard_patient.php'));
+
 $stmt = $mysqli->prepare("SELECT * FROM records WHERE id=? AND user_id=?");
 $stmt->bind_param("ii", $id, $_SESSION['user_id']);
 $stmt->execute();
 $record = $stmt->get_result()->fetch_assoc();
 
 if (!$record) {
-    header("Location: dashboard.php");
+    header("Location: $dashboard");
     exit;
 }
 ?>
@@ -29,7 +32,7 @@ if (!$record) {
   <div class="topbar">
     <div class="brand">CHR</div>
     <div>
-      <a href="dashboard.php">Dashboard</a>
+      <a href="<?= $dashboard ?>">Dashboard</a>
       <a href="logout.php">Logout</a>
     </div>
   </div>
@@ -47,7 +50,7 @@ if (!$record) {
       <a style="color:var(--primary);" href="<?=$record['file_path']?>" target="_blank">Open File</a></p>
     <?php endif; ?>
 
-    <a href="dashboard.php" class="btn" style="margin-top:12px;display:block;">Back</a>
+    <a href="<?= $dashboard ?>" class="btn" style="margin-top:12px;display:block;">Back</a>
 
   </div>
 

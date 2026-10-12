@@ -2,20 +2,27 @@
 //session_start();
 require 'config.php';
 
-if (!isset($_GET['id'])) {
-    die("Doctor ID missing");
+$doctor_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if (!$doctor_id) {
+    header("Location: index.php");
+    exit;
 }
 
-$doctor_id = $_GET['id'];
-
 /* 🔥 FETCH DOCTOR DETAILS */
-$stmt = $mysqli->prepare("SELECT * FROM users WHERE id=? AND role='doctor'");
+$stmt = $mysqli->prepare("
+    SELECT u.*, dp.qualification, dp.specialization as profile_spec, dp.address as profile_addr
+    FROM users u
+    LEFT JOIN doctor_profiles dp ON dp.doctor_id = u.id
+    WHERE u.id=? AND u.role='doctor'
+");
 $stmt->bind_param("i", $doctor_id);
 $stmt->execute();
 $doctor = $stmt->get_result()->fetch_assoc();
 
 if (!$doctor) {
-    die("Doctor not found");
+    header("Location: index.php");
+    exit;
 }
 
 /* 🔥 CHECK TODAY AVAILABILITY */
@@ -52,29 +59,48 @@ while ($row = $res->fetch_assoc()) {
 <!DOCTYPE html>
 <html>
 <head>
-<title>Doctor Profile</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doctor Profile - <?= htmlspecialchars($doctor['name'] ?? '') ?></title>
+<link rel="stylesheet" href="assets/css/styles.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { font-family: Arial; background: #f1f5f9; }
-.card { background:white; padding:20px; margin:20px; border-radius:10px; }
-.status { font-weight:bold; font-size:18px; }
+.status { font-weight:700; font-size:16px; margin-top:8px; }
 </style>
 </head>
 
 <body>
 
-<div class="card">
-<h2>👨‍⚕️ <?= $doctor['name'] ?></h2>
-<p><b>Phone:</b> <?= $doctor['phone'] ?></p>
-<p><b>Specialization:</b> <?= $doctor['specialization'] ?></p>
+<div class="container" style="max-width:800px;margin:auto;padding:20px;">
 
-<p class="status">Status: <?= $is_available ?></p>
+<div class="topbar">
+    <div class="brand">Doctor Details</div>
+    <div>
+        <a href="javascript:history.back()">⬅ Back</a>
+    </div>
 </div>
 
-<div class="card">
-<h3>📊 Monthly Leave Record</h3>
+<div class="card" style="margin-top:20px;">
+<h2>👨‍⚕️ <?= htmlspecialchars($doctor['name'] ?? '') ?></h2>
+<?php if(!empty($doctor['phone'])): ?>
+<p><b>📞 Phone:</b> <?= htmlspecialchars($doctor['phone']) ?></p>
+<?php endif; ?>
+<p><b>🩺 Specialization:</b> <?= htmlspecialchars($doctor['specialization'] ?: ($doctor['profile_spec'] ?: 'General Practice')) ?></p>
+<?php if(!empty($doctor['qualification'])): ?>
+<p><b>🎓 Qualification:</b> <?= htmlspecialchars($doctor['qualification']) ?></p>
+<?php endif; ?>
+
+<p class="status">Availability: <?= $is_available ?></p>
+
+<a href="appointments.php?doctor=<?= (int)$doctor['id'] ?>" class="btn" style="display:inline-block;margin-top:12px;">📅 Book Appointment</a>
+</div>
+
+<div class="card" style="margin-top:16px;">
+<h3 style="margin-bottom:12px;">📊 Monthly Leave Record</h3>
 <canvas id="chart"></canvas>
+</div>
+
 </div>
 
 <script>
@@ -84,8 +110,16 @@ new Chart(document.getElementById('chart'), {
         labels: <?= json_encode($months) ?>,
         datasets: [{
             label: 'Leaves',
-            data: <?= json_encode($totals) ?>
+            data: <?= json_encode($totals) ?>,
+            backgroundColor: '#3b82f6',
+            borderRadius: 6
         }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        }
     }
 });
 </script>

@@ -10,29 +10,41 @@ $error = "";
 /* ================= UPDATE PROFILE ================= */
 if (isset($_POST['update_profile'])) {
 
-    $name    = trim($_POST['name']);
-    $email   = trim($_POST['email']);
-    $phone   = trim($_POST['phone']);
-    $address = trim($_POST['address']);
+    $name    = trim($_POST['name'] ?? '');
+    $email   = trim($_POST['email'] ?? '');
+    $phone   = trim($_POST['phone'] ?? '');
+    $address = trim($_POST['address'] ?? '');
 
     if ($name && $email) {
-        $stmt = $mysqli->prepare("
-            UPDATE users 
-            SET name=?, email=?, phone=?, address=? 
-            WHERE id=?
-        ");
-        $stmt->bind_param(
-            "ssssi",
-            $name,
-            $email,
-            $phone,
-            $address,
-            $patient['id']
-        );
-        $stmt->execute();
+        try {
+            // Check if email taken by another user
+            $chk = $mysqli->prepare("SELECT id FROM users WHERE email=? AND id != ? LIMIT 1");
+            $chk->bind_param("si", $email, $patient['id']);
+            $chk->execute();
+            if ($chk->get_result()->num_rows > 0) {
+                $error = "❌ This email is already registered to another account.";
+            } else {
+                $stmt = $mysqli->prepare("
+                    UPDATE users 
+                    SET name=?, email=?, phone=?, address=? 
+                    WHERE id=?
+                ");
+                $stmt->bind_param(
+                    "ssssi",
+                    $name,
+                    $email,
+                    $phone,
+                    $address,
+                    $patient['id']
+                );
+                $stmt->execute();
 
-        $msg = "Profile updated successfully";
-        $patient = current_user($mysqli); // refresh data
+                $msg = "✅ Profile updated successfully";
+                $patient = current_user($mysqli); // refresh data
+            }
+        } catch (Throwable $e) {
+            $error = "❌ Error updating profile: " . $e->getMessage();
+        }
     } else {
         $error = "Name and Email are required";
     }
@@ -41,29 +53,33 @@ if (isset($_POST['update_profile'])) {
 /* ================= CHANGE PASSWORD ================= */
 if (isset($_POST['change_password'])) {
 
-    $old_pass = $_POST['old_password'];
-    $new_pass = $_POST['new_password'];
-    $confirm  = $_POST['confirm_password'];
+    $old_pass = $_POST['old_password'] ?? '';
+    $new_pass = $_POST['new_password'] ?? '';
+    $confirm  = $_POST['confirm_password'] ?? '';
 
-    // Fetch current password hash
-    $stmt = $mysqli->prepare("SELECT password FROM users WHERE id=?");
-    $stmt->bind_param("i", $patient['id']);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-
-    if (!password_verify($old_pass, $row['password'])) {
-        $error = "Old password is incorrect";
-    } elseif ($new_pass !== $confirm) {
-        $error = "New passwords do not match";
-    } elseif (strlen($new_pass) < 6) {
-        $error = "Password must be at least 6 characters";
-    } else {
-        $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-        $stmt = $mysqli->prepare("UPDATE users SET password=? WHERE id=?");
-        $stmt->bind_param("si", $hash, $patient['id']);
+    try {
+        // Fetch current password hash
+        $stmt = $mysqli->prepare("SELECT password FROM users WHERE id=?");
+        $stmt->bind_param("i", $patient['id']);
         $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
 
-        $msg = "Password changed successfully";
+        if (!$row || !password_verify($old_pass, $row['password'])) {
+            $error = "❌ Old password is incorrect";
+        } elseif ($new_pass !== $confirm) {
+            $error = "❌ New passwords do not match";
+        } elseif (strlen($new_pass) < 6) {
+            $error = "❌ Password must be at least 6 characters";
+        } else {
+            $hash = password_hash($new_pass, PASSWORD_DEFAULT);
+            $stmt = $mysqli->prepare("UPDATE users SET password=? WHERE id=?");
+            $stmt->bind_param("si", $hash, $patient['id']);
+            $stmt->execute();
+
+            $msg = "✅ Password changed successfully";
+        }
+    } catch (Throwable $e) {
+        $error = "❌ Error changing password: " . $e->getMessage();
     }
 }
 ?>

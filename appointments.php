@@ -21,40 +21,47 @@ while ($row = $res->fetch_assoc()) {
 /* ================= SAVE APPOINTMENT ================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $doctor_id   = (int)$_POST['doctor_id'];
-    $hospital_id = (int)$_POST['hospital_id'];
-    $date        = $_POST['appt_date'];
-    $time        = $_POST['appt_time'];
-    $reason      = trim($_POST['reason']);
+    $doctor_id   = (int)($_POST['doctor_id'] ?? 0);
+    $hospital_id = (int)($_POST['hospital_id'] ?? 0);
+    $date        = !empty($_POST['appt_date']) ? $_POST['appt_date'] : date('Y-m-d');
+    $raw_time    = trim($_POST['appt_time'] ?? '');
+    $reason      = trim($_POST['reason'] ?? '');
 
-    if (empty($time)) $time = "Any Time";
-
-    /* ❌ CHECK DOCTOR LEAVE */
-    $checkLeave = $mysqli->prepare("
-        SELECT 1 FROM doctor_leaves 
-        WHERE doctor_id=? AND leave_date=?
-    ");
-    $checkLeave->bind_param("is", $doctor_id, $date);
-    $checkLeave->execute();
-    $checkLeave->store_result();
-
-    if ($checkLeave->num_rows > 0) {
-
-        $msg = "❌ Doctor is on leave. Please select another date.";
-
+    // Format safely for MySQL TIME column (H:i:s)
+    if (!empty($raw_time) && $raw_time !== 'Any Time') {
+        $ts = strtotime($raw_time);
+        $time = ($ts !== false) ? date('H:i:s', $ts) : '09:00:00';
     } else {
+        $time = '09:00:00';
+    }
 
-        $stmt = $mysqli->prepare("
-            INSERT INTO appointments 
-            (patient_id, doctor_id, appt_date, appt_time, reason, status)
-            VALUES (?, ?, ?, ?, ?, 'pending')
+    try {
+        /* ❌ CHECK DOCTOR LEAVE */
+        $checkLeave = $mysqli->prepare("
+            SELECT 1 FROM doctor_leaves 
+            WHERE doctor_id=? AND leave_date=?
         ");
-        $stmt->bind_param("iisss",
-            $user['id'], $doctor_id, $date, $time, $reason
-        );
-        $stmt->execute();
+        $checkLeave->bind_param("is", $doctor_id, $date);
+        $checkLeave->execute();
+        $checkLeave->store_result();
 
-        $msg = "✅ Appointment Requested Successfully!";
+        if ($checkLeave->num_rows > 0) {
+            $msg = "❌ Doctor is on leave. Please select another date.";
+        } else {
+            $stmt = $mysqli->prepare("
+                INSERT INTO appointments 
+                (patient_id, doctor_id, appt_date, appt_time, reason, status)
+                VALUES (?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->bind_param("iisss",
+                $user['id'], $doctor_id, $date, $time, $reason
+            );
+            $stmt->execute();
+
+            $msg = "✅ Appointment Requested Successfully!";
+        }
+    } catch (Throwable $e) {
+        $msg = "❌ Error requesting appointment: " . $e->getMessage();
     }
 }
 

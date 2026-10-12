@@ -20,32 +20,37 @@ if ($result['count'] == 0) {
     exit;
 }
 
-// Fetch reports for this patient
-$stmt = $mysqli->prepare("
-    SELECT 
-        lr.id,
-        lr.report_file,
-        la.test_name,
-        lr.created_at as uploaded_at
-    FROM lab_reports lr
-    JOIN lab_appointments la ON lr.appointment_id = la.id
-    WHERE lr.patient_id = ?
-    ORDER BY lr.created_at DESC
-");
-$stmt->bind_param("i", $patient_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$reports = [];
-while ($row = $result->fetch_assoc()) {
-    $reports[] = [
-        'id' => $row['id'],
-        'test_name' => htmlspecialchars($row['test_name']),
-        'report_file' => htmlspecialchars($row['report_file']),
-        'uploaded_at' => $row['uploaded_at']
-    ];
-}
-
 header('Content-Type: application/json');
-echo json_encode(['reports' => $reports]);
+
+try {
+    // Fetch reports for this patient
+    $stmt = $mysqli->prepare("
+        SELECT 
+            lr.id,
+            lr.report_file,
+            la.test_name,
+            lr.uploaded_at
+        FROM lab_reports lr
+        JOIN lab_appointments la ON lr.appointment_id = la.id
+        WHERE lr.patient_id = ?
+        ORDER BY lr.uploaded_at DESC
+    ");
+    $stmt->bind_param("i", $patient_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $reports = [];
+    while ($row = $result->fetch_assoc()) {
+        $reports[] = [
+            'id' => $row['id'],
+            'test_name' => htmlspecialchars($row['test_name'] ?? ''),
+            'report_file' => htmlspecialchars($row['report_file'] ?? ''),
+            'uploaded_at' => $row['uploaded_at'] ?? ''
+        ];
+    }
+
+    echo json_encode(['reports' => $reports]);
+} catch (Throwable $e) {
+    echo json_encode(['reports' => [], 'error' => $e->getMessage()]);
+}
 ?>

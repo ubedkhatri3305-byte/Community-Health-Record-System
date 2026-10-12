@@ -10,11 +10,11 @@ $patient_id = $_SESSION['user_id'];
 $msg = "";
 
 /* ================= LOCATION ================= */
-$lat = $_GET['lat'] ?? 0;
-$lng = $_GET['lng'] ?? 0;
+$lat = isset($_GET['lat']) ? (float)$_GET['lat'] : 0.0;
+$lng = isset($_GET['lng']) ? (float)$_GET['lng'] : 0.0;
 
 /* ================= FETCH LABS ================= */
-if ($lat && $lng) {
+if ($lat != 0.0 && $lng != 0.0) {
 
     $sql = "
     SELECT id, name, city,
@@ -22,10 +22,10 @@ if ($lat && $lng) {
     ROUND(
         6371 * acos(
             cos(radians(?)) *
-            cos(radians(latitude)) *
-            cos(radians(longitude) - radians(?)) +
+            cos(radians(COALESCE(latitude, 0))) *
+            cos(radians(COALESCE(longitude, 0)) - radians(?)) +
             sin(radians(?)) *
-            sin(radians(latitude))
+            sin(radians(COALESCE(latitude, 0)))
         ), 2
     ) AS distance
 
@@ -61,26 +61,29 @@ while($row = $result->fetch_assoc()){
 /* ================= BOOK ================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $lab_id = $_POST['lab_id'];
-    $test = trim($_POST['test_name']);
-    $date = $_POST['appointment_date'];
+    $lab_id = (int)($_POST['lab_id'] ?? 0);
+    $test = trim($_POST['test_name'] ?? '');
+    $date = !empty($_POST['appointment_date']) ? $_POST['appointment_date'] : date('Y-m-d');
 
-    if (!$lab_id || !$test || !$date) {
+    if (!$lab_id || !$test) {
         $msg = "❌ Please select lab and fill all fields!";
     } else {
+        try {
+            $stmt = $mysqli->prepare("
+                INSERT INTO lab_appointments 
+                (patient_id, lab_id, test_name, appointment_date)
+                VALUES (?, ?, ?, ?)
+            ");
 
-        $stmt = $mysqli->prepare("
-            INSERT INTO lab_appointments 
-            (patient_id, lab_id, test_name, appointment_date)
-            VALUES (?, ?, ?, ?)
-        ");
+            $stmt->bind_param("iiss", $patient_id, $lab_id, $test, $date);
 
-        $stmt->bind_param("iiss", $patient_id, $lab_id, $test, $date);
-
-        if ($stmt->execute()) {
-            $msg = "✅ Lab appointment booked successfully!";
-        } else {
-            $msg = "❌ Error booking appointment!";
+            if ($stmt->execute()) {
+                $msg = "✅ Lab appointment booked successfully!";
+            } else {
+                $msg = "❌ Error booking appointment!";
+            }
+        } catch (Throwable $e) {
+            $msg = "❌ Booking error: " . $e->getMessage();
         }
     }
 }

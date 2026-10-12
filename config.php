@@ -350,16 +350,27 @@ function initialize_chr_tables($mysqli) {
     ];
 
     foreach ($tables as $sql) {
-        $mysqli->query($sql);
+        @$mysqli->query($sql);
+    }
+
+    // Safe column migrations to guarantee full schema compatibility across older/newer setups
+    $migrations = [
+        "ALTER TABLE users ADD COLUMN qualification varchar(100) DEFAULT NULL",
+        "ALTER TABLE users ADD COLUMN specialization varchar(100) DEFAULT NULL",
+        "ALTER TABLE users ADD COLUMN hospital_id int(11) DEFAULT NULL",
+        "ALTER TABLE appointments ADD COLUMN rescheduled_date date DEFAULT NULL",
+        "ALTER TABLE appointments ADD COLUMN rescheduled_time time DEFAULT NULL",
+        "ALTER TABLE appointments ADD COLUMN reschedule_msg text DEFAULT NULL",
+        "ALTER TABLE appointments ADD COLUMN reschedule_note text DEFAULT NULL"
+    ];
+    foreach ($migrations as $m) {
+        @$mysqli->query($m);
     }
 }
 
-// Auto-initialize tables if 'users' table does not exist
+// Auto-initialize tables and ensure schema integrity on every connection
 if ($connected) {
-    $tbl_check = @$mysqli->query("SHOW TABLES LIKE 'users'");
-    if (!$tbl_check || $tbl_check->num_rows === 0) {
-        initialize_chr_tables($mysqli);
-    }
+    initialize_chr_tables($mysqli);
 }
 
 $mysqli->set_charset("utf8mb4");

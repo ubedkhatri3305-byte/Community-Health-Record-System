@@ -23,6 +23,8 @@ if (!$data) {
     die("Hospital not found in hospitals table.");
 }
 
+$msg = "";
+
 /* 🔥 UPDATE PROFILE */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -34,29 +36,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $open_time  = !empty($_POST['open_time']) ? date('H:i:s', strtotime($_POST['open_time'])) : '09:00:00';
     $close_time = !empty($_POST['close_time']) ? date('H:i:s', strtotime($_POST['close_time'])) : '18:00:00';
 
-    $stmt = $mysqli->prepare("
-        UPDATE hospitals 
-        SET name=?, email=?, phone=?, address=?, open_time=?, close_time=?
-        WHERE id=? AND type='hospital'
-    ");
-
-    $stmt->bind_param(
-        "ssssssi",
-        $name,
-        $email,
-        $phone,
-        $address,
-        $open_time,
-        $close_time,
-        $hospital_id
-    );
-
     try {
-        $stmt->execute();
-        header("Location: hospital_dashboard.php");
-        exit;
+        // Check if email taken by another hospital
+        $chk = $mysqli->prepare("SELECT id FROM hospitals WHERE email=? AND id != ? LIMIT 1");
+        $chk->bind_param("si", $email, $hospital_id);
+        $chk->execute();
+        if ($chk->get_result()->num_rows > 0) {
+            $msg = "❌ This email is already registered to another hospital.";
+        } else {
+            $stmt = $mysqli->prepare("
+                UPDATE hospitals 
+                SET name=?, email=?, phone=?, address=?, open_time=?, close_time=?
+                WHERE id=? AND type='hospital'
+            ");
+
+            $stmt->bind_param(
+                "ssssssi",
+                $name,
+                $email,
+                $phone,
+                $address,
+                $open_time,
+                $close_time,
+                $hospital_id
+            );
+
+            $stmt->execute();
+            header("Location: hospital_dashboard.php");
+            exit;
+        }
     } catch (Throwable $e) {
-        $msg = "Error updating profile: " . $e->getMessage();
+        if ($e->getCode() == 1062 || str_contains($e->getMessage(), 'Duplicate entry')) {
+            $msg = "❌ This email is already registered to another hospital.";
+        } else {
+            $msg = "❌ Error updating profile: " . $e->getMessage();
+        }
     }
 }
 ?>
@@ -88,6 +102,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card">
 
     <h2>🏥 Edit Hospital Profile</h2>
+
+    <?php if(!empty($msg)): ?>
+        <div class="msg error" style="margin-bottom:14px;color:#dc2626;background:#fef2f2;padding:10px;border-radius:8px;">
+            <?= htmlspecialchars($msg) ?>
+        </div>
+    <?php endif; ?>
 
     <form method="post">
 
