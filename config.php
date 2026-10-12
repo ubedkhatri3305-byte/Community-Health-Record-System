@@ -229,18 +229,136 @@ if (!$connected || $mysqli->connect_errno) {
     }
 }
 
-// Auto-import database schema if tables are missing (e.g. brand new TiDB database)
-if ($connected && $DB_HOST !== 'localhost' && $DB_HOST !== '127.0.0.1') {
+function initialize_chr_tables($mysqli) {
+    $tables = [
+        "CREATE TABLE IF NOT EXISTS `users` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `name` varchar(100) DEFAULT NULL,
+          `email` varchar(100) DEFAULT NULL,
+          `password` varchar(255) DEFAULT NULL,
+          `role` enum('patient','doctor','admin','laboratory') DEFAULT 'patient',
+          `phone` varchar(20) DEFAULT NULL,
+          `address` text DEFAULT NULL,
+          `location` varchar(100) DEFAULT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          `hospital` varchar(255) DEFAULT NULL,
+          `hospital_id` int(11) DEFAULT NULL,
+          `specialization` varchar(100) DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `email` (`email`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `hospitals` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `name` varchar(255) NOT NULL,
+          `address` text DEFAULT NULL,
+          `phone` varchar(20) DEFAULT NULL,
+          `open_time` time NOT NULL DEFAULT '09:00:00',
+          `close_time` time NOT NULL DEFAULT '18:00:00',
+          `latitude` decimal(10,8) DEFAULT NULL,
+          `longitude` decimal(11,8) DEFAULT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          `type` enum('hospital','laboratory') NOT NULL DEFAULT 'hospital',
+          `email` varchar(255) NOT NULL,
+          `password` varchar(255) NOT NULL,
+          `city` varchar(100) DEFAULT NULL,
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `appointments` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `patient_id` int(11) DEFAULT NULL,
+          `doctor_id` int(11) DEFAULT NULL,
+          `appt_date` date DEFAULT NULL,
+          `appt_time` time DEFAULT NULL,
+          `reason` text DEFAULT NULL,
+          `status` enum('pending','accepted','rejected','rescheduled') DEFAULT 'pending',
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          `reschedule_note` text DEFAULT NULL,
+          `rescheduled_date` date DEFAULT NULL,
+          `rescheduled_time` time DEFAULT NULL,
+          `reschedule_msg` text DEFAULT NULL,
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `doctor_leaves` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `doctor_id` int(11) NOT NULL,
+          `leave_date` date NOT NULL,
+          `reason` varchar(255) DEFAULT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `doctor_profiles` (
+          `doctor_id` int(11) NOT NULL,
+          `qualification` varchar(100) DEFAULT NULL,
+          `experience` int(11) DEFAULT NULL,
+          `specialization` varchar(100) DEFAULT NULL,
+          `address` text DEFAULT NULL,
+          PRIMARY KEY (`doctor_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `lab_appointments` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `patient_id` int(11) DEFAULT NULL,
+          `lab_id` int(11) DEFAULT NULL,
+          `test_name` varchar(100) DEFAULT NULL,
+          `appointment_date` date DEFAULT NULL,
+          `status` enum('pending','accepted','rejected') DEFAULT 'pending',
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `lab_reports` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `appointment_id` int(11) DEFAULT NULL,
+          `patient_id` int(11) DEFAULT NULL,
+          `lab_id` int(11) DEFAULT NULL,
+          `report_file` varchar(255) DEFAULT NULL,
+          `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `notifications` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `user_id` int(11) DEFAULT NULL,
+          `message` text DEFAULT NULL,
+          `seen` tinyint(4) DEFAULT 0,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `records` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `user_id` int(11) NOT NULL,
+          `title` varchar(255) NOT NULL,
+          `description` text DEFAULT NULL,
+          `record_date` date DEFAULT NULL,
+          `file_path` varchar(255) DEFAULT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `user_locations` (
+          `user_id` int(11) NOT NULL,
+          `latitude` decimal(10,8) DEFAULT NULL,
+          `longitude` decimal(11,8) DEFAULT NULL,
+          `updated_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`user_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    ];
+
+    foreach ($tables as $sql) {
+        $mysqli->query($sql);
+    }
+}
+
+// Auto-initialize tables if 'users' table does not exist
+if ($connected) {
     $tbl_check = @$mysqli->query("SHOW TABLES LIKE 'users'");
-    if ($tbl_check && $tbl_check->num_rows === 0) {
-        $sql_file = __DIR__ . '/database.sql';
-        if (file_exists($sql_file)) {
-            $dump = file_get_contents($sql_file);
-            $dump = preg_replace('/CREATE DATABASE[^;]+;/i', '', $dump);
-            $dump = preg_replace('/USE[^;]+;/i', '', $dump);
-            @$mysqli->multi_query($dump);
-            while (@$mysqli->next_result()) {;}
-        }
+    if (!$tbl_check || $tbl_check->num_rows === 0) {
+        initialize_chr_tables($mysqli);
     }
 }
 
