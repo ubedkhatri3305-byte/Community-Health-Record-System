@@ -124,8 +124,9 @@ while ($r = $cal_res->fetch_assoc()) {
 <div class="topbar">
   <h3>Doctor Dashboard</h3>
   <div>
-    <!-- <a href="doctor_reports.php" style="color:white;">📋 Patient Reports</a> | -->
-    <a href="edit_doctor_profile.php" style="color:white;">Edit</a> |
+    <a href="doctor_prescriptions.php" style="color:white;font-weight:600;background:rgba(255,255,255,0.2);padding:5px 12px;border-radius:6px;text-decoration:none;margin-right:8px;">💊 Prescriptions</a>
+    <a href="doctor_reports.php" style="color:white;margin-right:8px;">📋 Reports</a>
+    <a href="edit_doctor_profile.php" style="color:white;margin-right:8px;">Edit Profile</a>
     <a href="logout.php" style="color:white;">Logout</a>
   </div>
 </div>
@@ -200,7 +201,7 @@ Status:
 <br><br>
 
 <!-- ACTIONS -->
-<div id="actions-<?= $a['id'] ?>" style="<?= $canEdit ? '' : 'display:none;' ?>">
+<div id="actions-<?= $a['id'] ?>" style="<?= $canEdit ? '' : 'display:none;' ?> margin-bottom:8px;">
 
 <button class="btn" onclick="doAction(<?= $a['id'] ?>,'accepted')">✔ Accept</button>
 
@@ -210,12 +211,18 @@ Status:
 
 </div>
 
-<!-- EDIT BUTTON (shown when accepted/rejected) -->
-<?php if (!$canEdit): ?>
-<div id="edit-toggle-<?= $a['id'] ?>">
-  <button class="btn btn-gray" onclick="enableEdit(<?= $a['id'] ?>)">✏ Edit Decision</button>
+<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:6px;">
+  <a href="add_prescription.php?patient_id=<?= (int)$a['patient_id'] ?>&appointment_id=<?= (int)$a['id'] ?>" class="btn" style="background:linear-gradient(135deg, #0284c7, #0369a1); text-decoration:none; display:inline-flex; align-items:center; gap:5px; padding:6px 14px; font-size:13px; font-weight:600; border-radius:6px; color:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    💊 Prescribe Medicine
+  </a>
+
+  <!-- EDIT BUTTON (shown when accepted/rejected) -->
+  <?php if (!$canEdit): ?>
+  <div id="edit-toggle-<?= $a['id'] ?>" style="display:inline-block;">
+    <button class="btn btn-gray" onclick="enableEdit(<?= $a['id'] ?>)" style="padding:6px 12px; font-size:12px;">✏ Edit Decision</button>
+  </div>
+  <?php endif; ?>
 </div>
-<?php endif; ?>
 
 </div>
 <?php endwhile; ?>

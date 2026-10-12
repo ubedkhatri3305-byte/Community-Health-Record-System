@@ -347,6 +347,30 @@ function initialize_chr_tables($mysqli) {
           `longitude` decimal(11,8) DEFAULT NULL,
           `updated_at` timestamp NOT NULL DEFAULT current_timestamp(),
           PRIMARY KEY (`user_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS `prescriptions` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `doctor_id` int(11) NOT NULL,
+          `patient_id` int(11) NOT NULL,
+          `appointment_id` int(11) DEFAULT NULL,
+          `medicine_name` varchar(255) NOT NULL,
+          `dosage` varchar(100) NOT NULL,
+          `timing_morning` tinyint(1) NOT NULL DEFAULT 1,
+          `morning_time` time DEFAULT '08:00:00',
+          `timing_afternoon` tinyint(1) NOT NULL DEFAULT 1,
+          `afternoon_time` time DEFAULT '13:00:00',
+          `timing_night` tinyint(1) NOT NULL DEFAULT 1,
+          `night_time` time DEFAULT '20:00:00',
+          `every_hours` int(11) DEFAULT NULL,
+          `intake_relation` enum('after_meal','before_meal','with_meal','anytime') NOT NULL DEFAULT 'after_meal',
+          `instructions` text DEFAULT NULL,
+          `start_date` date NOT NULL,
+          `duration_days` int(11) NOT NULL DEFAULT 7,
+          `end_date` date NOT NULL,
+          `status` enum('active','completed','stopped') NOT NULL DEFAULT 'active',
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     ];
 
@@ -356,9 +380,10 @@ function initialize_chr_tables($mysqli) {
     $driver->report_mode = MYSQLI_REPORT_OFF;
 
     try {
-        // Only run CREATE TABLE queries if users table is not present
+        // Run CREATE TABLE queries if users or prescriptions table is not present
         $checkUsers = $mysqli->query("SHOW TABLES LIKE 'users'");
-        if (!$checkUsers || $checkUsers->num_rows === 0) {
+        $checkPresc = $mysqli->query("SHOW TABLES LIKE 'prescriptions'");
+        if (!$checkUsers || $checkUsers->num_rows === 0 || !$checkPresc || $checkPresc->num_rows === 0) {
             foreach ($tables as $sql) {
                 try {
                     $mysqli->query($sql);
@@ -371,13 +396,17 @@ function initialize_chr_tables($mysqli) {
             "users" => [
                 "qualification"  => "ALTER TABLE users ADD COLUMN qualification varchar(100) DEFAULT NULL",
                 "specialization" => "ALTER TABLE users ADD COLUMN specialization varchar(100) DEFAULT NULL",
-                "hospital_id"    => "ALTER TABLE users ADD COLUMN hospital_id int(11) DEFAULT NULL"
+                "hospital_id"    => "ALTER TABLE users ADD COLUMN hospital_id int(11) DEFAULT NULL",
+                "medicine_reminders_enabled" => "ALTER TABLE users ADD COLUMN medicine_reminders_enabled tinyint(1) DEFAULT 1"
             ],
             "appointments" => [
                 "rescheduled_date" => "ALTER TABLE appointments ADD COLUMN rescheduled_date date DEFAULT NULL",
                 "rescheduled_time" => "ALTER TABLE appointments ADD COLUMN rescheduled_time time DEFAULT NULL",
                 "reschedule_msg"   => "ALTER TABLE appointments ADD COLUMN reschedule_msg text DEFAULT NULL",
                 "reschedule_note"  => "ALTER TABLE appointments ADD COLUMN reschedule_note text DEFAULT NULL"
+            ],
+            "prescriptions" => [
+                "every_hours" => "ALTER TABLE prescriptions ADD COLUMN every_hours int(11) DEFAULT NULL"
             ]
         ];
 

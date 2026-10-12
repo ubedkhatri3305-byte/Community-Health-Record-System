@@ -73,6 +73,22 @@ $stmt4 = $mysqli->prepare("
 $stmt4->bind_param("i", $user['id']);
 $stmt4->execute();
 $reports = $stmt4->get_result();
+
+/* ================= PRESCRIPTIONS ================= */
+$stmt_presc = $mysqli->prepare("
+    SELECT p.*, u.name as doctor_name
+    FROM prescriptions p
+    JOIN users u ON p.doctor_id = u.id
+    WHERE p.patient_id = ? AND p.status = 'active' AND p.end_date >= CURDATE()
+    ORDER BY p.id DESC
+");
+$stmt_presc->bind_param("i", $user['id']);
+$stmt_presc->execute();
+$prescriptions_list = $stmt_presc->get_result();
+$active_presc_array = [];
+while ($prow = $prescriptions_list->fetch_assoc()) {
+    $active_presc_array[] = $prow;
+}
 ?>
 
 <!doctype html>
@@ -93,6 +109,8 @@ $reports = $stmt4->get_result();
 <div class="topbar">
     <div class="brand">CHR</div>
     <div>
+        <a href="patient_prescriptions.php" style="background:rgba(255,255,255,0.18);padding:6px 12px;border-radius:6px;font-weight:600;">💊 My Prescriptions</a>
+        <a href="notification.php">🔔 Notifications</a>
         <a href="edit_patient_profile.php">Edit Profile</a>
         <span style="margin-right:14px">
             Hello, <?=htmlspecialchars($user['name'])?>
@@ -121,6 +139,10 @@ $reports = $stmt4->get_result();
     <h3 class="header-title">Quick Actions</h3>
 
     <div class="grid">
+        <div class="card-small" style="background:#eff6ff;border:1px solid #bfdbfe;">
+            <a href="patient_prescriptions.php">💊<h3 style="color:#1d4ed8;">Medicine Reminders</h3></a>
+        </div>
+
         <div class="card-small">
             <a href="add_record.php">📁<h3>Add Record</h3></a>
         </div>
@@ -147,6 +169,43 @@ $reports = $stmt4->get_result();
 
 <!-- RIGHT SIDE -->
 <div style="flex:1;min-width:320px;">
+
+<!-- ACTIVE PRESCRIPTIONS & REMINDERS WIDGET -->
+<div class="card" style="margin-bottom:14px;border-left:4px solid var(--primary);background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 class="header-title" style="margin:0;">💊 Active Prescriptions & Reminders</h3>
+        <a href="patient_prescriptions.php" style="font-size:12px;font-weight:700;color:var(--primary);text-decoration:none;">View All &rarr;</a>
+    </div>
+
+    <?php if(empty($active_presc_array)): ?>
+        <p style="color:var(--text-muted);font-size:13px;margin:0;">No active prescriptions scheduled. Consult a doctor to get personalized reminders.</p>
+    <?php else: ?>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <?php foreach(array_slice($active_presc_array, 0, 3) as $pr): ?>
+                <div style="background:#f1f5f9;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong>💊 <?= htmlspecialchars($pr['medicine_name']) ?></strong> (<?= htmlspecialchars($pr['dosage']) ?>)<br>
+                        <small style="color:var(--text-secondary);">Dr. <?= htmlspecialchars($pr['doctor_name']) ?></small>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                        <?php if($pr['timing_morning']): ?>
+                            <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">🌅 <?= substr($pr['morning_time'],0,5) ?></span>
+                        <?php endif; ?>
+                        <?php if($pr['timing_afternoon']): ?>
+                            <span style="background:#ffedd5;color:#9a3412;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">☀️ <?= substr($pr['afternoon_time'],0,5) ?></span>
+                        <?php endif; ?>
+                        <?php if($pr['timing_night']): ?>
+                            <span style="background:#ede9fe;color:#5b21b6;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">🌙 <?= substr($pr['night_time'],0,5) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div style="margin-top:12px;text-align:right;">
+            <a href="patient_prescriptions.php" class="btn" style="padding:6px 14px;font-size:12px;display:inline-block;">🔔 Manage Notification Times</a>
+        </div>
+    <?php endif; ?>
+</div>
 
 <!-- RECORDS -->
 <div class="card">
@@ -300,6 +359,80 @@ View Report
 
 </div>
 </div>
+
+<!-- MEDICINE REMINDERS BACKGROUND ENGINE -->
+<script>
+const activeMedications = <?= json_encode($active_presc_array) ?>;
+
+function checkPatientReminders() {
+    if (!activeMedications || activeMedications.length === 0) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const timeNow = `${hh}:${mm}`;
+    const today = now.toISOString().slice(0, 10);
+
+    activeMedications.forEach(med => {
+        const slots = [];
+        if (parseInt(med.timing_morning) === 1 && med.morning_time) {
+            slots.push({ name: 'Morning', time: med.morning_time.slice(0, 5) });
+        }
+        if (parseInt(med.timing_afternoon) === 1 && med.afternoon_time) {
+            slots.push({ name: 'Afternoon', time: med.afternoon_time.slice(0, 5) });
+        }
+        if (parseInt(med.timing_night) === 1 && med.night_time) {
+            slots.push({ name: 'Night', time: med.night_time.slice(0, 5) });
+        }
+
+        slots.forEach(slot => {
+            if (slot.time === timeNow) {
+                const key = `chr_rem_${med.id}_${slot.name}_${today}`;
+                if (!localStorage.getItem(key)) {
+                    localStorage.setItem(key, '1');
+
+                    // Audio Chime via Web Audio API
+                    try {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        if (AudioContext) {
+                            const ctx = new AudioContext();
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.3);
+                            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.start();
+                            osc.stop(ctx.currentTime + 0.8);
+                        }
+                    } catch(e) {}
+
+                    new Notification(`💊 Medicine Reminder: ${med.medicine_name}`, {
+                        body: `It's time for your ${slot.name} dose (${med.dosage}) - ${med.intake_relation.replace('_', ' ')}.`,
+                        tag: `med_${med.id}_${slot.name}`
+                    });
+
+                    // Log in server
+                    const data = new FormData();
+                    data.append('medicine', med.medicine_name);
+                    data.append('dosage', med.dosage);
+                    data.append('slot', slot.name);
+                    fetch('api_reminder_log.php', { method: 'POST', body: data });
+                }
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkPatientReminders();
+    setInterval(checkPatientReminders, 30000);
+});
+</script>
 
 </body>
 </html>

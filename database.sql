@@ -324,7 +324,38 @@ LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` VALUES (1,'abc','abc@gmail.com','$2y$10$7DElAXoc7rU33Hm6Je2K0usaC4Pnf2pOPDRzgSmdOsgoeB.WhtTFG','','1234567890','',NULL,'2025-12-19 10:27:58',NULL,NULL,NULL),(2,'dr.ubed','admin2@college.com','$2y$10$goAQzjGbJyyUOemVlFr0t.A.ZX26hw9oeFy1kIEqsUtoIw8Meo2CK','',NULL,NULL,'','2025-12-19 10:43:23','kk',NULL,NULL),(3,'Hospital Admin','admin@hospital.com','$2y$10$KZQ9m5nJHuj5dY9Yp0RjA.8pU.4iHDwQxX.rS7Y.0y.7tWl1Yb1i2','',NULL,NULL,NULL,'2025-12-21 04:31:01',NULL,NULL,NULL),(4,'dr.ubed','us@admin.com','$2y$10$3yNb/CAwHlN8HbUAWaRTzun/8TgqlGIqDutp/HxtEv3jyavKMOdHy','',NULL,NULL,'','2025-12-21 10:48:52',NULL,1,NULL),(5,'sami','sami@doctor.com','$2y$10$HXWta3aoeIKwWPTAkc8n.u3YiI8auNtfF8Aj/prLcQZtcUeTxF9qy','',NULL,NULL,'','2025-12-21 11:59:06',NULL,2,NULL),(6,'abcd','accd@gmail.com','$2y$10$Fs0g/YyweHyOm7CV2uxxU.3wMbKShwFdD4STrHN2MSOFTdxK30WRq','',NULL,NULL,'xyz','2025-12-22 09:59:05',NULL,1,NULL),(7,'danish','danish@gmail.com','$2y$10$e2eHS/IykRPF38dBb/od/OJvTQ8cSzPha/ZvzzbRmKij07m/Y93dO','',NULL,NULL,'mundra','2026-01-24 07:38:58',NULL,6,NULL),(8,'faiz','faiz@gmail.com','$2y$10$P6gQF6eN6KtbFcL4eGhx0ejC3WDn4Dwkn5k5RcRxoJZHF5rp/2RGe','','','mandvi','mandvi','2026-01-24 08:12:41',NULL,6,NULL),(10,'abc','abcd@gmail.com','$2y$10$9eo9LdkfIf/ggqWpAfdN7eBV.aXxQyDAPv6nPJGyOgI4MlE1Qrxgm','patient','1234567890','modasa',NULL,'2026-01-25 07:23:48',NULL,NULL,NULL),(11,'ubed','ubed3305@gmail.com','$2y$10$WMnQ6o4JwFvib5XCIjedhu1USur1Sm2zNulHtM2ExJ0svHoiTNcbS','doctor',NULL,NULL,'mundra','2026-01-25 07:25:53',NULL,6,NULL),(12,'dr.us','us@doctor.com','$2y$10$HJPnK8S7eGjy1JHPJDY5a.4B8zSwZl8ng3OnBX7qEvE9uyzFID5du','doctor',NULL,NULL,'modasa','2026-04-18 18:08:23',NULL,9,NULL),(13,'dr ubed ','ubed@doctor.com','$2y$10$ro5ZmlSJ5PO1QRSRP8XV6eCFlsRs25N5cDlOH08l2O4AKnoZzAOny','doctor',NULL,NULL,'modasa','2026-04-18 18:36:22',NULL,9,NULL),(14,'dr','dr@doctor.com','$2y$10$.S67yMSEU1wFn8hugS4.ZepdUlWYeQ/QFekszasjoUp9wRoKyJ4RK','doctor','9898270987',NULL,'modasa','2026-04-18 18:53:24',NULL,8,'md'),(15,'Test Patient','patient@test.com','$2y$10$zUTXkTeT0VMNw0LqFGuyAe/CqE8MZDyAmCdnoTLKWYLewdn2exMSC','patient','','',NULL,'2026-04-23 12:51:16',NULL,NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `prescriptions`
+--
+
+DROP TABLE IF EXISTS `prescriptions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `prescriptions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `doctor_id` int(11) NOT NULL,
+  `patient_id` int(11) NOT NULL,
+  `appointment_id` int(11) DEFAULT NULL,
+  `medicine_name` varchar(255) NOT NULL,
+  `dosage` varchar(100) NOT NULL,
+  `timing_morning` tinyint(1) NOT NULL DEFAULT 1,
+  `morning_time` time DEFAULT '08:00:00',
+  `timing_afternoon` tinyint(1) NOT NULL DEFAULT 1,
+  `afternoon_time` time DEFAULT '13:00:00',
+  `timing_night` tinyint(1) NOT NULL DEFAULT 1,
+  `night_time` time DEFAULT '20:00:00',
+  `every_hours` int(11) DEFAULT NULL,
+  `intake_relation` enum('after_meal','before_meal','with_meal','anytime') NOT NULL DEFAULT 'after_meal',
+  `instructions` text DEFAULT NULL,
+  `start_date` date NOT NULL,
+  `duration_days` int(11) NOT NULL DEFAULT 7,
+  `end_date` date NOT NULL,
+  `status` enum('active','completed','stopped') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
