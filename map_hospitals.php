@@ -5,6 +5,7 @@ header('Content-Type: application/json');
 
 $lat = isset($_GET['lat']) ? (float)$_GET['lat'] : 0.0;
 $lng = isset($_GET['lng']) ? (float)$_GET['lng'] : 0.0;
+$filterType = isset($_GET['type']) ? strtolower(trim($_GET['type'])) : 'all';
 
 $data = [];
 
@@ -18,9 +19,16 @@ $cityCoords = [
 ];
 
 try {
+    $whereTypeClause = "";
+    $typeParam = null;
+    if ($filterType === 'hospital' || $filterType === 'laboratory') {
+        $whereTypeClause = " WHERE h.type = ? ";
+        $typeParam = $filterType;
+    }
+
     if ($lat != 0.0 && $lng != 0.0) {
         $sql = "
-        SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.latitude, h.longitude,
+        SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.type, h.latitude, h.longitude,
                h.open_time, h.close_time,
                TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
                ROUND(6371 * acos(
@@ -33,24 +41,39 @@ try {
                    ))
                ), 2) AS distance
         FROM hospitals h
+        {$whereTypeClause}
         ORDER BY distance ASC
-        LIMIT 25
+        LIMIT 50
         ";
 
         $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param("ddd", $lat, $lng, $lat);
+        if ($typeParam) {
+            $stmt->bind_param("ddds", $lat, $lng, $lat, $typeParam);
+        } else {
+            $stmt->bind_param("ddd", $lat, $lng, $lat);
+        }
         $stmt->execute();
         $res = $stmt->get_result();
     } else {
-        $res = $mysqli->query("
-        SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.latitude, h.longitude,
+        $sql = "
+        SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.type, h.latitude, h.longitude,
                h.open_time, h.close_time,
                TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
                NULL AS distance
         FROM hospitals h
+        {$whereTypeClause}
         ORDER BY h.name ASC
-        LIMIT 25
-        ");
+        LIMIT 50
+        ";
+
+        if ($typeParam) {
+            $stmt = $mysqli->prepare($sql);
+            $stmt->bind_param("s", $typeParam);
+            $stmt->execute();
+            $res = $stmt->get_result();
+        } else {
+            $res = $mysqli->query($sql);
+        }
     }
 
     if ($res) {
@@ -70,6 +93,7 @@ try {
             }
 
             $r['id'] = (int)$r['id'];
+            $r['type'] = !empty($r['type']) ? strtolower($r['type']) : 'hospital';
             $r['distance'] = isset($r['distance']) && $r['distance'] !== null ? (float)$r['distance'] : null;
             $r['is_open'] = (bool)$r['is_open'];
 
@@ -78,7 +102,6 @@ try {
         }
     }
 } catch (Throwable $e) {
-    // Return empty array or logged error
     error_log("map_hospitals error: " . $e->getMessage());
 }
 

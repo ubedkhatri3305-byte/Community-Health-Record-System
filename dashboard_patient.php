@@ -148,7 +148,7 @@ while ($prow = $prescriptions_list->fetch_assoc()) {
         </div>
 
         <div class="card-small">
-            <a href="map.php">🗺️<h3>Nearby Hospitals</h3></a>
+            <a href="map.php">🗺️<h3>Hospitals & Labs</h3></a>
         </div>
 
         <div class="card-small">

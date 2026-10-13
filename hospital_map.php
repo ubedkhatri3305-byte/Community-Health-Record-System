@@ -19,7 +19,7 @@ if (!$hospital_id) {
 $hospital = null;
 if ($hospital_id) {
     $stmt = $mysqli->prepare("
-        SELECT id, name, address, phone, email, latitude, longitude, city, open_time, close_time
+        SELECT id, name, address, phone, email, latitude, longitude, city, type, open_time, close_time
         FROM hospitals
         WHERE id = ?
     ");
@@ -36,14 +36,14 @@ if (!$hospital) {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Hospital Not Found - CHR</title>
+        <title>Facility Not Found - CHR</title>
         <link rel="stylesheet" href="assets/css/styles.css">
     </head>
     <body class="center" style="min-height:100vh;padding:20px;">
         <div class="card" style="max-width:480px;text-align:center;">
             <div style="font-size:48px;margin-bottom:12px;">🏥⚠️</div>
-            <h2>Hospital Not Found</h2>
-            <p style="color:var(--text-secondary);margin:12px 0 20px 0;">No hospital record exists for this identifier.</p>
+            <h2>Facility Not Found</h2>
+            <p style="color:var(--text-secondary);margin:12px 0 20px 0;">No healthcare facility record exists for this identifier.</p>
             <a href="<?= (isset($_SESSION['role']) && $_SESSION['role'] === 'hospital') ? 'hospital_dashboard.php' : 'index.php' ?>" class="btn">⬅ Return to Dashboard</a>
         </div>
     </body>
@@ -52,10 +52,15 @@ if (!$hospital) {
     exit;
 }
 
+$type = strtolower($hospital['type'] ?? 'hospital');
+$is_lab = ($type === 'laboratory');
+$typeLabel = $is_lab ? 'Diagnostic Laboratory' : 'Hospital';
+$typeIcon = $is_lab ? '🧪' : '🏥';
+
 $has_exact_coords = !empty($hospital['latitude']) && !empty($hospital['longitude']);
 $lat = $has_exact_coords ? (float)$hospital['latitude'] : 23.0225;  // Default: Gujarat center
 $lng = $has_exact_coords ? (float)$hospital['longitude'] : 72.5714;
-$name = htmlspecialchars($hospital['name'] ?? 'Hospital');
+$name = htmlspecialchars($hospital['name'] ?? $typeLabel);
 $address = htmlspecialchars($hospital['address'] ?? 'Address not specified');
 $phone = htmlspecialchars($hospital['phone'] ?? 'N/A');
 $email = htmlspecialchars($hospital['email'] ?? 'N/A');
@@ -137,7 +142,7 @@ $back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['rol
     
     <!-- 🔝 HEADER -->
     <div class="topbar">
-        <div class="brand">📍 <?= $name ?></div>
+        <div class="brand">📍 <?= $name ?> <span style="font-size:12px;opacity:0.85;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:12px;margin-left:6px;"><?= $typeIcon ?> <?= $typeLabel ?></span></div>
         <div>
             <a href="<?= $back_url ?>">⬅ Back to Dashboard</a>
             <?php if($is_hospital_role): ?>
@@ -151,7 +156,7 @@ $back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['rol
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;color:#1e40af;display:flex;align-items:center;gap:12px;">
         <span style="font-size:24px;">ℹ️</span>
         <div>
-            <strong>Notice:</strong> This hospital does not have exact GPS coordinates saved. A regional location is shown.
+            <strong>Notice:</strong> This <?= strtolower($typeLabel) ?> does not have exact GPS coordinates saved. A regional location is shown.
             <?php if ($is_hospital_role): ?>
                 <br><a href="edit_hospital_profile.php" style="color:#2563eb;font-weight:700;text-decoration:underline;">Click here to set your exact latitude & longitude</a> in your profile.
             <?php endif; ?>
@@ -162,9 +167,9 @@ $back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['rol
     <!-- 🗺️ MAP -->
     <div id="map"></div>
 
-    <!-- 📋 HOSPITAL INFO -->
+    <!-- 📋 HOSPITAL/LAB INFO -->
     <div class="hospital-info">
-        <h3 class="header-title" style="margin-bottom:16px;">🏥 Hospital Information</h3>
+        <h3 class="header-title" style="margin-bottom:16px;"><?= $typeIcon ?> <?= $typeLabel ?> Information</h3>
         
         <div class="info-grid">
             <div class="info-item">
@@ -207,9 +212,18 @@ $back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['rol
            target="_blank" class="btn" style="background:#059669;box-shadow:none;">
             🗺️ Open in Google Maps
         </a>
+        <?php if ($is_lab): ?>
+            <a href="lab_booking.php" class="btn" style="background:#7c3aed;box-shadow:none;">
+                🧪 Book Lab Test
+            </a>
+        <?php else: ?>
+            <a href="appointments.php" class="btn" style="background:#2563eb;box-shadow:none;">
+                📅 Book Appointment
+            </a>
+        <?php endif; ?>
         <?php if (!empty($phone) && $phone !== 'N/A'): ?>
-        <a href="tel:<?= $phone ?>" class="btn" style="background:#2563eb;box-shadow:none;">
-            ☎️ Call Hospital
+        <a href="tel:<?= $phone ?>" class="btn btn-secondary" style="box-shadow:none;">
+            ☎️ Call <?= $typeLabel ?>
         </a>
         <?php endif; ?>
         <a href="<?= $back_url ?>" class="btn btn-gray" style="box-shadow:none;">
@@ -223,8 +237,11 @@ $back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['rol
 document.addEventListener('DOMContentLoaded', function() {
     const lat = <?= json_encode($lat) ?>;
     const lng = <?= json_encode($lng) ?>;
-    const hospitalName = <?= json_encode($name) ?>;
+    const facilityName = <?= json_encode($name) ?>;
     const address = <?= json_encode($address) ?>;
+    const isLab = <?= json_encode($is_lab) ?>;
+    const pinColor = isLab ? '#7c3aed' : '#2563eb';
+    const pinIcon = isLab ? '🧪' : '🏥';
 
     // Initialize Leaflet map
     const map = L.map('map', {
@@ -238,21 +255,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(map);
 
     // Custom pulse pin
-    const hospitalIcon = L.divIcon({
-        className: 'custom-hospital-pin',
-        html: `<div style="background:#2563eb;color:#ffffff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 14px rgba(37,99,235,0.45);border:3px solid white;">🏥</div>`,
+    const facilityIcon = L.divIcon({
+        className: 'custom-facility-pin',
+        html: `<div style="background:${pinColor};color:#ffffff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,0.3);border:3px solid white;">${pinIcon}</div>`,
         iconSize: [38, 38],
         iconAnchor: [19, 19],
         popupAnchor: [0, -22]
     });
     
     // Add marker
-    const marker = L.marker([lat, lng], { icon: hospitalIcon }).addTo(map);
+    const marker = L.marker([lat, lng], { icon: facilityIcon }).addTo(map);
     marker.bindPopup(`
         <div style="font-family:inherit;padding:4px;">
-            <div style="font-weight:700;font-size:14px;color:#1e3a8a;margin-bottom:4px;">📍 ${hospitalName}</div>
+            <div style="font-weight:700;font-size:14px;color:#1e3a8a;margin-bottom:4px;">${pinIcon} ${facilityName}</div>
             <div style="font-size:12px;color:#475569;margin-bottom:8px;">${address}</div>
-            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;">🗺️ Navigate</a>
+            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="display:inline-block;background:${pinColor};color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;">🗺️ Navigate</a>
         </div>
     `).openPopup();
 });
