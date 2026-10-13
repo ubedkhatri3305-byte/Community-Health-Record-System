@@ -212,21 +212,25 @@ while ($prow = $prescriptions_list->fetch_assoc()) {
     <h3 class="header-title">Recent Records</h3>
 
     <?php if ($records->num_rows === 0): ?>
-        <p>No records yet.</p>
+        <p style="color:var(--text-muted);font-size:13px;margin:0;">No records added yet. Click &ldquo;+ Add Health Record&rdquo; on the left to add one.</p>
     <?php else: ?>
         <?php while($r = $records->fetch_assoc()): ?>
-            <div class="row" style="border-bottom:1px solid #eee;padding:6px 0;">
-                <div><?=htmlspecialchars($r['title'])?></div>
-                <div style="font-size:12px;color:gray;">
-                    <?=htmlspecialchars($r['record_date'])?>
+            <div class="row" style="border-bottom:1px solid #eee;padding:8px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <div>
+                    <strong style="color:var(--text-primary);"><?=htmlspecialchars($r['title'])?></strong>
+                    <div style="font-size:12px;color:var(--text-secondary);">
+                        📅 <?=htmlspecialchars($r['record_date'])?>
+                    </div>
                 </div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <?php if($r['file_path']): ?>
-                        <a href="<?=htmlspecialchars($r['file_path'])?>" target="_blank">View</a>
-                    <?php else: ?>—<?php endif; ?>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <a href="view_record.php?id=<?= $r['id'] ?>" class="btn" style="padding:4px 10px;font-size:12px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;box-shadow:none;">👁 Details</a>
+                    <?php if(!empty($r['file_path'])): ?>
+                        <a href="view_report.php?record_id=<?= $r['id'] ?>" target="_blank" class="btn" style="padding:4px 10px;font-size:12px;background:#10b981;color:#fff;text-decoration:none;border-radius:6px;box-shadow:none;">📄 File</a>
+                        <a href="download_report.php?record_id=<?= $r['id'] ?>" class="btn" style="padding:4px 8px;font-size:12px;background:#64748b;color:#fff;text-decoration:none;border-radius:6px;box-shadow:none;" title="Download">⬇</a>
+                    <?php endif; ?>
                     <a href="delete_record.php?id=<?= $r['id'] ?>"
-                       style="color:red;font-size:12px;"
-                       onclick="return confirm('Delete this record?')">🗑 Delete</a>
+                       style="color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;padding:4px 6px;"
+                       onclick="return confirm('Delete this record?')">🗑</a>
                 </div>
             </div>
         <?php endwhile; ?>

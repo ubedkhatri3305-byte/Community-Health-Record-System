@@ -157,10 +157,11 @@ $prescriptions = $p->get_result();
     <small style="color:var(--text-muted);"><?= htmlspecialchars($row['record_date'] ?? '') ?></small>
     <p style="margin:8px 0;"><?= nl2br(htmlspecialchars($row['description'] ?? '')) ?></p>
 
-    <?php if(!empty($row['file_path'])): 
-      $fileUrl = (strpos($row['file_path'], 'uploads/') === 0) ? $row['file_path'] : 'uploads/' . $row['file_path'];
-    ?>
-      <a href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" class="btn" style="display:inline-block;padding:6px 14px;font-size:13px;">View File</a>
+    <?php if(!empty($row['file_path'])): ?>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <a href="view_report.php?record_id=<?= (int)$row['id'] ?>" target="_blank" class="btn" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;font-size:13px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">👁️ View File</a>
+        <a href="download_report.php?record_id=<?= (int)$row['id'] ?>" class="btn" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;font-size:13px;background:#059669;color:#fff;text-decoration:none;border-radius:6px;">📥 Download</a>
+      </div>
     <?php endif; ?>
   </div>
   <?php endwhile; ?>

@@ -247,12 +247,39 @@ CREATE TABLE `records` (
   `description` text DEFAULT NULL,
   `record_date` date DEFAULT NULL,
   `file_path` varchar(255) DEFAULT NULL,
+  `file_data` mediumblob DEFAULT NULL,
+  `file_type` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `records_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+DROP TABLE IF EXISTS `lab_appointments`;
+CREATE TABLE IF NOT EXISTS `lab_appointments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `patient_id` int(11) DEFAULT NULL,
+  `lab_id` int(11) DEFAULT NULL,
+  `test_name` varchar(100) DEFAULT NULL,
+  `appointment_date` date DEFAULT NULL,
+  `status` enum('pending','accepted','rejected') DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `lab_reports`;
+CREATE TABLE IF NOT EXISTS `lab_reports` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `appointment_id` int(11) DEFAULT NULL,
+  `patient_id` int(11) DEFAULT NULL,
+  `lab_id` int(11) DEFAULT NULL,
+  `report_file` varchar(255) DEFAULT NULL,
+  `file_data` mediumblob DEFAULT NULL,
+  `file_type` varchar(100) DEFAULT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `records`

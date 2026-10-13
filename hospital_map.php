@@ -65,11 +65,30 @@ $address = htmlspecialchars($hospital['address'] ?? 'Address not specified');
 $phone = htmlspecialchars($hospital['phone'] ?? 'N/A');
 $email = htmlspecialchars($hospital['email'] ?? 'N/A');
 $city = htmlspecialchars($hospital['city'] ?? '');
-$open_time = !empty($hospital['open_time']) ? substr($hospital['open_time'], 0, 5) : '09:00';
-$close_time = !empty($hospital['close_time']) ? substr($hospital['close_time'], 0, 5) : '18:00';
+$open_time = !empty($hospital['open_time']) ? substr($hospital['open_time'], 0, 5) : '08:00';
+$close_time = !empty($hospital['close_time']) ? substr($hospital['close_time'], 0, 5) : '20:00';
+
+$is_open = true;
+$open_status_label = '🟢 Open Now';
+if (!empty($hospital['open_time']) && !empty($hospital['close_time'])) {
+    $curSec = (int)date('H') * 3600 + (int)date('i') * 60;
+    $pO = explode(':', $hospital['open_time']);
+    $pC = explode(':', $hospital['close_time']);
+    $oSec = ((int)($pO[0] ?? 0)) * 3600 + ((int)($pO[1] ?? 0)) * 60;
+    $cSec = ((int)($pC[0] ?? 0)) * 3600 + ((int)($pC[1] ?? 0)) * 60;
+    if ($oSec === $cSec || ($oSec === 0 && $cSec === 0)) {
+        $is_open = true;
+        $open_status_label = '🟢 24/7 Open';
+    } elseif ($oSec < $cSec) {
+        $is_open = ($curSec >= $oSec && $curSec <= $cSec);
+    } else {
+        $is_open = ($curSec >= $oSec || $curSec <= $cSec);
+    }
+}
 
 $is_hospital_role = isset($_SESSION['role']) && $_SESSION['role'] === 'hospital';
-$back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['role']) && $_SESSION['role'] === 'patient' ? 'dashboard_patient.php' : 'index.php');
+$is_lab_role = isset($_SESSION['role']) && $_SESSION['role'] === 'laboratory';
+$back_url = $is_hospital_role ? 'hospital_dashboard.php' : ($is_lab_role ? 'laboratory_dashboard.php' : (isset($_SESSION['role']) && $_SESSION['role'] === 'patient' ? 'dashboard_patient.php' : 'index.php'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -200,7 +219,12 @@ $back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['rol
                 <span class="info-icon">🕐</span>
                 <div>
                     <strong style="display:block;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Working Hours</strong>
-                    <span><?= $open_time ?> &ndash; <?= $close_time ?></span>
+                    <span>
+                        <?= $open_time ?> &ndash; <?= $close_time ?>
+                        <?= $is_open 
+                            ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;margin-left:6px;">' . $open_status_label . '</span>' 
+                            : '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;margin-left:6px;">🔴 Closed</span>' ?>
+                    </span>
                 </div>
             </div>
         </div>

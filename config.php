@@ -4,6 +4,9 @@ if (ob_get_level() === 0) {
     ob_start();
 }
 
+// Set standard timezone (Asia/Kolkata +05:30) for consistent timestamps across all environments
+date_default_timezone_set('Asia/Kolkata');
+
 /* ================= SERVERLESS SESSION HANDLER ================= */
 // On Vercel / Serverless, local filesystem sessions in /tmp are ephemeral and lost across invocations.
 // We implement an HMAC-SHA256 signed stateless session handler when running in serverless environments.
@@ -307,6 +310,8 @@ function initialize_chr_tables($mysqli) {
           `patient_id` int(11) DEFAULT NULL,
           `lab_id` int(11) DEFAULT NULL,
           `report_file` varchar(255) DEFAULT NULL,
+          `file_data` mediumblob DEFAULT NULL,
+          `file_type` varchar(100) DEFAULT NULL,
           `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
           PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -327,6 +332,8 @@ function initialize_chr_tables($mysqli) {
           `description` text DEFAULT NULL,
           `record_date` date DEFAULT NULL,
           `file_path` varchar(255) DEFAULT NULL,
+          `file_data` mediumblob DEFAULT NULL,
+          `file_type` varchar(100) DEFAULT NULL,
           `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
           PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -397,6 +404,14 @@ function initialize_chr_tables($mysqli) {
             ],
             "prescriptions" => [
                 "every_hours" => "ALTER TABLE prescriptions ADD COLUMN every_hours int(11) DEFAULT NULL"
+            ],
+            "lab_reports" => [
+                "file_data" => "ALTER TABLE lab_reports ADD COLUMN file_data mediumblob DEFAULT NULL",
+                "file_type" => "ALTER TABLE lab_reports ADD COLUMN file_type varchar(100) DEFAULT NULL"
+            ],
+            "records" => [
+                "file_data" => "ALTER TABLE records ADD COLUMN file_data mediumblob DEFAULT NULL",
+                "file_type" => "ALTER TABLE records ADD COLUMN file_type varchar(100) DEFAULT NULL"
             ]
         ];
 
@@ -423,6 +438,7 @@ if ($connected) {
 }
 
 $mysqli->set_charset("utf8mb4");
+@$mysqli->query("SET time_zone = '+05:30'");
 
 /* ================= AUTH HELPERS ================= */
 

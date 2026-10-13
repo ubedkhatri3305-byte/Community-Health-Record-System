@@ -50,18 +50,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($uploaded) {
             try {
-                $stmt = $mysqli->prepare("
-                    INSERT INTO lab_reports (appointment_id, patient_id, lab_id, report_file)
-                    VALUES (?, ?, ?, ?)
-                ");
-                $stmt->bind_param(
-                    "iiis",
-                    $appointment_id,
-                    $app['patient_id'],
-                    $lab_id,
-                    $safe_name
-                );
-                $stmt->execute();
+                $actualPath = file_exists($target) ? $target : ((isset($temp_dir) ? $temp_dir : sys_get_temp_dir() . '/uploads/') . $safe_name);
+                $file_bytes = file_exists($actualPath) ? @file_get_contents($actualPath) : null;
+                $file_mime = !empty($_FILES['report']['type']) ? $_FILES['report']['type'] : 'application/octet-stream';
+
+                $hasBlobCol = false;
+                $checkCol = $mysqli->query("SHOW COLUMNS FROM `lab_reports` LIKE 'file_data'");
+                if ($checkCol && $checkCol->num_rows > 0) {
+                    $hasBlobCol = true;
+                }
+
+                if ($hasBlobCol && $file_bytes !== null && strlen($file_bytes) > 0) {
+                    $stmt = $mysqli->prepare("
+                        INSERT INTO lab_reports (appointment_id, patient_id, lab_id, report_file, file_data, file_type)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    $null = NULL;
+                    $stmt->bind_param(
+                        "iiisbs",
+                        $appointment_id,
+                        $app['patient_id'],
+                        $lab_id,
+                        $safe_name,
+                        $null,
+                        $file_mime
+                    );
+                    $stmt->send_long_data(4, $file_bytes);
+                    $stmt->execute();
+                } else {
+                    $stmt = $mysqli->prepare("
+                        INSERT INTO lab_reports (appointment_id, patient_id, lab_id, report_file)
+                        VALUES (?, ?, ?, ?)
+                    ");
+                    $stmt->bind_param(
+                        "iiis",
+                        $appointment_id,
+                        $app['patient_id'],
+                        $lab_id,
+                        $safe_name
+                    );
+                    $stmt->execute();
+                }
 
                 // Send notification to patient
                 $notif_msg = "Your lab report for " . ($app['test_name'] ?? 'test') . " is now available.";

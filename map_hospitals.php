@@ -18,6 +18,24 @@ $cityCoords = [
     'ahmedabad' => ['lat' => 23.0225, 'lng' => 72.5714],
 ];
 
+function checkFacilityIsOpen($openTime, $closeTime) {
+    if (empty($openTime) || empty($closeTime)) return true;
+    if ($openTime === $closeTime || ($openTime === '00:00:00' && $closeTime === '00:00:00')) return true;
+
+    $curSec = (int)date('H') * 3600 + (int)date('i') * 60 + (int)date('s');
+    $partsO = explode(':', $openTime);
+    $partsC = explode(':', $closeTime);
+    $openSec = ((int)($partsO[0] ?? 0)) * 3600 + ((int)($partsO[1] ?? 0)) * 60;
+    $closeSec = ((int)($partsC[0] ?? 0)) * 3600 + ((int)($partsC[1] ?? 0)) * 60;
+
+    if ($openSec < $closeSec) {
+        return ($curSec >= $openSec && $curSec <= $closeSec);
+    } else {
+        // Crosses midnight, e.g. 20:00 to 06:00
+        return ($curSec >= $openSec || $curSec <= $closeSec);
+    }
+}
+
 try {
     $whereTypeClause = "";
     $typeParam = null;
@@ -30,7 +48,6 @@ try {
         $sql = "
         SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.type, h.latitude, h.longitude,
                h.open_time, h.close_time,
-               TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
                ROUND(6371 * acos(
                    LEAST(1.0, GREATEST(-1.0,
                        cos(radians(?)) *
@@ -58,7 +75,6 @@ try {
         $sql = "
         SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.type, h.latitude, h.longitude,
                h.open_time, h.close_time,
-               TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
                NULL AS distance
         FROM hospitals h
         {$whereTypeClause}
@@ -95,7 +111,7 @@ try {
             $r['id'] = (int)$r['id'];
             $r['type'] = !empty($r['type']) ? strtolower($r['type']) : 'hospital';
             $r['distance'] = isset($r['distance']) && $r['distance'] !== null ? (float)$r['distance'] : null;
-            $r['is_open'] = (bool)$r['is_open'];
+            $r['is_open'] = checkFacilityIsOpen($r['open_time'] ?? null, $r['close_time'] ?? null);
 
             $data[] = $r;
             $index++;

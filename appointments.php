@@ -71,7 +71,11 @@ if ($lat && $lng) {
     $sql = "
     SELECT 
         id, name, city, open_time, close_time,
-        TIME(NOW()) BETWEEN open_time AND close_time AS is_open,
+        CASE 
+            WHEN (open_time = '00:00:00' AND close_time = '00:00:00') OR open_time = close_time OR (open_time IS NULL AND close_time IS NULL) THEN 1
+            WHEN open_time < close_time THEN (TIME(NOW()) >= open_time AND TIME(NOW()) <= close_time)
+            ELSE (TIME(NOW()) >= open_time OR TIME(NOW()) <= close_time)
+        END AS is_open,
 
         ROUND(
             6371 * acos(
@@ -98,7 +102,11 @@ if ($lat && $lng) {
     $hospitals = $mysqli->query("
         SELECT 
             id, name, city, open_time, close_time,
-            TIME(NOW()) BETWEEN open_time AND close_time AS is_open
+            CASE 
+                WHEN (open_time = '00:00:00' AND close_time = '00:00:00') OR open_time = close_time OR (open_time IS NULL AND close_time IS NULL) THEN 1
+                WHEN open_time < close_time THEN (TIME(NOW()) >= open_time AND TIME(NOW()) <= close_time)
+                ELSE (TIME(NOW()) >= open_time OR TIME(NOW()) <= close_time)
+            END AS is_open
         FROM hospitals
         WHERE LOWER(type)='hospital'
         ORDER BY name

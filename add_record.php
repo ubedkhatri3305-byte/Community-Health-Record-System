@@ -41,22 +41,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Save record
     if ($error === "") {
         try {
-            $stmt = $mysqli->prepare("
-                INSERT INTO records
-                (user_id, title, description, record_date, file_path)
-                VALUES (?, ?, ?, ?, ?)
-            ");
+            $file_bytes = null;
+            $file_mime = !empty($_FILES['report']['type']) ? $_FILES['report']['type'] : 'application/octet-stream';
+            if ($file_path) {
+                $checkPaths = [
+                    __DIR__ . '/' . $file_path,
+                    $file_path,
+                    sys_get_temp_dir() . '/' . basename($file_path),
+                    sys_get_temp_dir() . '/uploads/' . basename($file_path)
+                ];
+                foreach ($checkPaths as $cp) {
+                    if (file_exists($cp) && is_file($cp)) {
+                        $file_bytes = @file_get_contents($cp);
+                        break;
+                    }
+                }
+            }
 
-            $stmt->bind_param(
-                "issss",
-                $user['id'],
-                $title,
-                $description,
-                $record_date,
-                $file_path
-            );
+            $hasBlobCol = false;
+            $checkCol = $mysqli->query("SHOW COLUMNS FROM `records` LIKE 'file_data'");
+            if ($checkCol && $checkCol->num_rows > 0) {
+                $hasBlobCol = true;
+            }
 
-            if ($stmt->execute()) {
+            if ($hasBlobCol && $file_bytes !== null && strlen($file_bytes) > 0) {
+                $stmt = $mysqli->prepare("
+                    INSERT INTO records
+                    (user_id, title, description, record_date, file_path, file_data, file_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $null = NULL;
+                $stmt->bind_param(
+                    "issssbs",
+                    $user['id'],
+                    $title,
+                    $description,
+                    $record_date,
+                    $file_path,
+                    $null,
+                    $file_mime
+                );
+                $stmt->send_long_data(5, $file_bytes);
+                $res = $stmt->execute();
+            } else {
+                $stmt = $mysqli->prepare("
+                    INSERT INTO records
+                    (user_id, title, description, record_date, file_path)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+
+                $stmt->bind_param(
+                    "issss",
+                    $user['id'],
+                    $title,
+                    $description,
+                    $record_date,
+                    $file_path
+                );
+                $res = $stmt->execute();
+            }
+
+            if ($res) {
                 header("Location: dashboard_patient.php");
                 exit;
             } else {

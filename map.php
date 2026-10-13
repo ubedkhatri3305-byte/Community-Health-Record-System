@@ -437,6 +437,43 @@ function applyFilters() {
   renderFacilityCards(filtered);
 }
 
+function checkFacilityIsOpenClient(openTime, closeTime) {
+  if (!openTime || !closeTime) return { isOpen: true, label: '🟢 Open Now' };
+  
+  const oClean = openTime.slice(0, 5);
+  const cClean = closeTime.slice(0, 5);
+  
+  // 24 hours round-the-clock facility
+  if (oClean === cClean || (oClean === '00:00' && cClean === '00:00')) {
+    return { isOpen: true, label: '🟢 24/7 Open' };
+  }
+
+  const [oH, oM] = oClean.split(':').map(Number);
+  const [cH, cM] = cClean.split(':').map(Number);
+
+  if (isNaN(oH) || isNaN(cH)) {
+    return { isOpen: true, label: '🟢 Open Now' };
+  }
+
+  const now = new Date();
+  const curMin = now.getHours() * 60 + now.getMinutes();
+  const openMin = oH * 60 + (oM || 0);
+  const closeMin = cH * 60 + (cM || 0);
+
+  let isOpen = false;
+  if (openMin < closeMin) {
+    isOpen = (curMin >= openMin && curMin <= closeMin);
+  } else {
+    // Night shift crossing midnight (e.g. 20:00 to 06:00)
+    isOpen = (curMin >= openMin || curMin <= closeMin);
+  }
+
+  return {
+    isOpen: isOpen,
+    label: isOpen ? '🟢 Open Now' : '🔴 Closed'
+  };
+}
+
 function renderMapMarkers(facilities) {
   // Clear existing markers
   facilityMarkers.forEach(m => map.removeLayer(m));
@@ -479,7 +516,10 @@ function renderMapMarkers(facilities) {
     const marker = L.marker([lat, lng], { icon: pinMarker }).addTo(map);
 
     const distHtml = f.distance !== null ? `<span class="badge-distance" style="margin-left:4px;">📍 ${f.distance} km away</span>` : '';
-    const statusHtml = f.is_open ? '<span class="badge-open">🟢 Open Now</span>' : '<span class="badge-closed">🔴 Closed</span>';
+    const statusInfo = checkFacilityIsOpenClient(f.open_time, f.close_time);
+    const statusHtml = statusInfo.isOpen 
+      ? `<span class="badge-open">${statusInfo.label}</span>` 
+      : `<span class="badge-closed">🔴 Closed</span>`;
 
     marker.bindPopup(`
       <div style="font-family:inherit;min-width:220px;padding:4px;">
@@ -490,7 +530,7 @@ function renderMapMarkers(facilities) {
         <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">${pinIcon} ${escapeHtml(f.name)}</div>
         <div style="font-size:12px;color:#475569;margin-bottom:4px;">📍 ${escapeHtml(f.address || f.city || '')}</div>
         <div style="font-size:12px;color:#64748b;margin-bottom:8px;">
-          🕐 ${escapeHtml(f.open_time ? f.open_time.slice(0,5) : '09:00')} &ndash; ${escapeHtml(f.close_time ? f.close_time.slice(0,5) : '18:00')} ${distHtml}
+          🕐 ${escapeHtml(f.open_time ? f.open_time.slice(0,5) : '08:00')} &ndash; ${escapeHtml(f.close_time ? f.close_time.slice(0,5) : '20:00')} ${distHtml}
         </div>
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
           ${actionBtn}
@@ -531,8 +571,11 @@ function renderFacilityCards(facilities) {
       : '<span class="badge-type-hospital">🏥 Hospital</span>';
 
     const distBadge = f.distance !== null ? `<span class="badge-distance">📍 ${f.distance} km</span>` : '';
-    const openBadge = f.is_open ? '<span class="badge-open">🟢 Open Now</span>' : '<span class="badge-closed">🔴 Closed</span>';
-    const hours = (f.open_time && f.close_time) ? `${f.open_time.slice(0,5)} &ndash; ${f.close_time.slice(0,5)}` : '09:00 &ndash; 18:00';
+    const statusInfo = checkFacilityIsOpenClient(f.open_time, f.close_time);
+    const openBadge = statusInfo.isOpen 
+      ? `<span class="badge-open">${statusInfo.label}</span>` 
+      : `<span class="badge-closed">🔴 Closed</span>`;
+    const hours = (f.open_time && f.close_time) ? `${f.open_time.slice(0,5)} &ndash; ${f.close_time.slice(0,5)}` : '08:00 &ndash; 20:00';
 
     const primaryAction = isLab
       ? `<a href="lab_booking.php" class="btn" style="flex:1;min-width:100px;padding:6px 10px;font-size:12px;background:#7c3aed;color:#fff;border-radius:6px;box-shadow:none;text-decoration:none;">🧪 Book Lab Test</a>`
