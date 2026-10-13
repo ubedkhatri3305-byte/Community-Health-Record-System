@@ -26,7 +26,7 @@ if (!$app) {
 /* UPLOAD REPORT */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_FILES['report']['name'])) {
-        $upload_dir = "uploads/";
+        $upload_dir = __DIR__ . "/uploads/";
         if (!is_dir($upload_dir)) {
             @mkdir($upload_dir, 0777, true);
         }
@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (@move_uploaded_file($_FILES['report']['tmp_name'], $temp_dir . $safe_name)) {
                 $uploaded = true;
+                @copy($temp_dir . $safe_name, $target);
             }
         }
 

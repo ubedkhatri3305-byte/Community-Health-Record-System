@@ -83,7 +83,7 @@ $result = $stmt->get_result();
     <div class="brand">Doctor Management</div>
     <div>
         <a href="register_doctor.php">+ Add Doctor</a>
-        <a href="hospital_map.php">Map View</a>
+        <a href="hospital_map.php?id=<?= $hospital_id ?>">Map View</a>
         <a href="edit_hospital_profile.php">Edit Profile</a>
         <a href="logout.php">Logout</a>
     </div>

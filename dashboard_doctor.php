@@ -59,11 +59,26 @@ while ($r = $cal_res->fetch_assoc()) {
     $date     = !empty($r['rescheduled_date']) ? $r['rescheduled_date'] : (!empty($r['appt_date']) ? $r['appt_date'] : date('Y-m-d'));
     $raw_time = !empty($r['rescheduled_time']) ? $r['rescheduled_time'] : (!empty($r['appt_time']) ? $r['appt_time'] : '09:00:00');
     $time     = substr($raw_time, 0, 8);
+    $status   = $r['status'] ?: 'pending';
     $color    = '#2563eb';
-    if ($r['status'] === 'accepted')    $color = '#16a34a';
-    if ($r['status'] === 'rejected')    $color = '#dc2626';
-    if ($r['status'] === 'rescheduled') $color = '#d97706';
-    $cal_events[] = ['title' => $r['patient_name'] ?? 'Patient', 'start' => $date . 'T' . $time, 'color' => $color];
+    if ($status === 'accepted')    $color = '#16a34a';
+    if ($status === 'rejected')    $color = '#dc2626';
+    if ($status === 'rescheduled') $color = '#d97706';
+    $cal_events[] = [
+        'id'        => (int)$r['id'],
+        'title'     => ($r['patient_name'] ?? 'Patient') . ' (' . substr($time, 0, 5) . ')',
+        'start'     => $date . 'T' . $time,
+        'color'     => $color,
+        'extendedProps' => [
+            'patient_id'   => (int)$r['patient_id'],
+            'patient_name' => $r['patient_name'] ?? 'Patient',
+            'status'       => $status,
+            'time'         => substr($time, 0, 5),
+            'date'         => $date,
+            'reason'       => $r['reason'] ?? '',
+            'is_leave'     => false
+        ]
+    ];
 }
 ?>
 <!DOCTYPE html>
@@ -73,7 +88,6 @@ while ($r = $cal_res->fetch_assoc()) {
 <title>Doctor Dashboard - CHR</title>
 
 <link rel="stylesheet" href="assets/css/styles.css">
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
@@ -84,13 +98,191 @@ while ($r = $cal_res->fetch_assoc()) {
   display: inline-flex;
 }
 
-#calendar {
-  margin-top: 15px;
+/* ================= FULLCALENDAR MASTER STYLES ================= */
+#calendar-wrap {
+  margin-top: 18px;
   background: white;
-  padding: 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--card-border);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+#calendar {
+  min-height: 580px;
+  font-family: inherit;
+}
+
+/* Header & Toolbar */
+.fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  letter-spacing: -0.01em;
+}
+
+/* Toolbar Buttons */
+.fc .fc-button {
+  background: #f1f5f9;
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: none;
+  transition: all 0.2s ease;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+}
+
+.fc .fc-button:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: var(--text-main);
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active,
+.fc .fc-button.fc-today-button:active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3) !important;
+}
+
+.fc .fc-button-group {
+  display: inline-flex;
+  gap: 2px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+}
+
+.fc .fc-button-group > .fc-button {
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.fc .fc-button-group > .fc-button.fc-button-active {
+  background: #ffffff !important;
+  color: var(--primary) !important;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+/* Day Table Headers */
+.fc .fc-col-header-cell {
+  background: #f8fafc;
+  padding: 10px 4px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border: 1px solid var(--card-border);
+}
+
+/* Grid Cells & Dates */
+.fc-theme-standard td, .fc-theme-standard th {
+  border-color: #eef2f6;
+}
+
+.fc .fc-daygrid-day {
+  transition: background 0.15s ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.fc .fc-daygrid-day-top {
+  padding: 6px 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fc .fc-daygrid-day-number {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  padding: 2px 6px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+  background: rgba(37, 99, 235, 0.04) !important;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Events */
+.fc-daygrid-event {
+  margin: 2px 4px !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  border: none !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.fc-daygrid-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+.fc-daygrid-event-dot {
+  display: none;
+}
+
+/* Calendar Legend */
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 
 .modal {
@@ -109,7 +301,7 @@ while ($r = $cal_res->fetch_assoc()) {
   padding: 24px;
   border-radius: var(--radius-lg);
   width: 90%;
-  max-width: 320px;
+  max-width: 360px;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--card-border);
 }
@@ -230,12 +422,22 @@ Status:
 </div>
 
 <!-- CALENDAR TOGGLE -->
-<div style="margin-top:12px;">
-  <button class="btn" onclick="toggleCalendar()" id="cal-btn">📅 Show Calendar</button>
+<div style="margin-top:16px;">
+  <button class="btn" onclick="toggleCalendar()" id="cal-btn" style="width:auto;display:inline-flex;padding:10px 22px;">
+    📅 Show Calendar
+  </button>
 </div>
 
 <!-- CALENDAR (hidden by default) -->
 <div id="calendar-wrap" style="display:none;">
+  <div class="calendar-legend">
+    <span style="font-weight:700;color:var(--primary-dark);">Status Legend:</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#16a34a;"></span> Accepted</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#d97706;"></span> Rescheduled</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#2563eb;"></span> Pending</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#dc2626;"></span> Rejected</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#9333ea;"></span> Leave Day</span>
+  </div>
   <div id="calendar"></div>
 </div>
 
@@ -259,6 +461,19 @@ Status:
 <button class="btn btn-red" onclick="closeModal()">Close</button>
 
 </div>
+</div>
+
+<!-- 📋 EVENT DETAILS MODAL -->
+<div class="modal" id="eventModal">
+  <div class="modal-content" style="max-width:380px;">
+    <h3 id="evModalTitle" style="margin-top:0;margin-bottom:12px;color:var(--primary-dark);">Appointment Details</h3>
+    <div id="evModalBody" style="margin:16px 0;font-size:14px;color:var(--text-secondary);line-height:1.6;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a id="evModalPatientLink" href="#" class="btn" style="flex:1;background:#2563eb;color:#fff;padding:8px 12px;font-size:13px;text-decoration:none;border-radius:6px;">👤 Patient</a>
+      <a id="evModalDateLink" href="#" class="btn" style="flex:1;background:#0d9488;color:#fff;padding:8px 12px;font-size:13px;text-decoration:none;border-radius:6px;">📅 Date View</a>
+      <button onclick="closeEventModal()" class="btn btn-gray" style="flex:1;padding:8px 12px;font-size:13px;border-radius:6px;">Close</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -300,7 +515,7 @@ function enableEdit(id) {
   if (t) t.style.display = 'none';
 }
 
-/* ================= MODAL ================= */
+/* ================= RESCHEDULE MODAL ================= */
 function openModal(id) {
   currentId = id;
   document.getElementById('modal').style.display = 'flex';
@@ -315,6 +530,61 @@ function closeModal() {
   document.getElementById('resForm').reset();
   currentId = null;
 }
+
+/* ================= EVENT DETAILS MODAL ================= */
+function openEventModal(event) {
+  const props = event.extendedProps || {};
+  if (props.is_leave) {
+    document.getElementById('evModalTitle').textContent = '🚫 Doctor Leave Day';
+    document.getElementById('evModalBody').innerHTML = `
+      <div style="background:#fef2f2;border:1px solid #fecaca;padding:12px;border-radius:8px;color:#991b1b;">
+        <strong>Date:</strong> ${props.date}<br>
+        <span>You have marked this entire day as off-duty / leave.</span>
+      </div>
+    `;
+    document.getElementById('evModalPatientLink').style.display = 'none';
+    document.getElementById('evModalDateLink').href = '?date=' + props.date;
+    document.getElementById('eventModal').style.display = 'flex';
+    return;
+  }
+
+  const statusColors = {
+    accepted: '#16a34a',
+    rejected: '#dc2626',
+    rescheduled: '#d97706',
+    pending: '#2563eb'
+  };
+
+  const stColor = statusColors[props.status] || '#475569';
+  document.getElementById('evModalTitle').textContent = '👤 ' + (props.patient_name || 'Appointment');
+  document.getElementById('evModalBody').innerHTML = `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:8px;">
+      <div style="margin-bottom:6px;">
+        <strong>📅 Date:</strong> ${props.date} &bull; <strong>🕐 Time:</strong> ${props.time}
+      </div>
+      <div style="margin-bottom:6px;">
+        <strong>Status:</strong> <span style="font-weight:700;color:${stColor};text-transform:capitalize;">● ${props.status}</span>
+      </div>
+      ${props.reason ? `<div><strong>Reason:</strong> ${props.reason}</div>` : ''}
+    </div>
+  `;
+
+  document.getElementById('evModalPatientLink').style.display = 'inline-flex';
+  document.getElementById('evModalPatientLink').href = 'view_patient.php?patient_id=' + props.patient_id;
+  document.getElementById('evModalDateLink').href = '?date=' + props.date;
+  document.getElementById('eventModal').style.display = 'flex';
+}
+
+function closeEventModal() {
+  document.getElementById('eventModal').style.display = 'none';
+}
+
+window.addEventListener('click', function(event) {
+  const modal = document.getElementById('modal');
+  const evModal = document.getElementById('eventModal');
+  if (event.target === modal) closeModal();
+  if (event.target === evModal) closeEventModal();
+});
 
 /* ================= RESCHEDULE ================= */
 document.getElementById('resForm').onsubmit = function(e) {
@@ -342,7 +612,16 @@ document.getElementById('resForm').onsubmit = function(e) {
 const events = <?= json_encode($cal_events) ?>;
 
 <?php foreach ($leaves as $ld): ?>
-events.push({ title: '🚫 Leave', start: '<?= $ld ?>', color: 'red' });
+events.push({
+  title: '🚫 Leave Day',
+  start: '<?= $ld ?>',
+  color: '#9333ea',
+  allDay: true,
+  extendedProps: {
+    is_leave: true,
+    date: '<?= $ld ?>'
+  }
+});
 <?php endforeach; ?>
 
 let calendarInstance = null;
@@ -354,19 +633,29 @@ function toggleCalendar() {
 
   if (wrap.style.display === 'none') {
     wrap.style.display = 'block';
-    btn.textContent    = '📅 Hide Calendar';
+    btn.innerHTML      = '📅 Hide Calendar';
 
-    /* Initialise only once */
+    /* Initialise once, then update size on every reveal */
     if (!calendarReady) {
       calendarInstance = new FullCalendar.Calendar(document.getElementById('calendar'), {
         initialView: 'dayGridMonth',
-        height: 600,
+        height: 'auto',
         headerToolbar: {
           left:   'prev,next today',
           center: 'title',
           right:  'dayGridMonth,timeGridWeek,timeGridDay'
         },
+        buttonText: {
+          today: 'Today',
+          month: 'Month',
+          week:  'Week',
+          day:   'Day'
+        },
         events: events,
+        eventClick: function(info) {
+          info.jsEvent.preventDefault();
+          openEventModal(info.event);
+        },
         dateClick: function(info) {
           window.location.href = '?date=' + info.dateStr;
         }
@@ -374,9 +663,16 @@ function toggleCalendar() {
       calendarInstance.render();
       calendarReady = true;
     }
+
+    // Force layout update after container transitions from display:none
+    setTimeout(() => {
+      if (calendarInstance) {
+        calendarInstance.updateSize();
+      }
+    }, 100);
   } else {
     wrap.style.display = 'none';
-    btn.textContent    = '📅 Show Calendar';
+    btn.innerHTML      = '📅 Show Calendar';
   }
 }
 </script>

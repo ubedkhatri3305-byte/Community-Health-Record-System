@@ -8,21 +8,33 @@ $lng = isset($_GET['lng']) ? (float)$_GET['lng'] : 0.0;
 
 $data = [];
 
+// Fallback coordinates for cities if lat/lng is missing in DB
+$cityCoords = [
+    'modasa'    => ['lat' => 23.4636, 'lng' => 73.3005],
+    'bhuj'      => ['lat' => 23.2420, 'lng' => 69.6669],
+    'bhujpur'   => ['lat' => 22.8680, 'lng' => 69.5840],
+    'mundra'    => ['lat' => 22.8396, 'lng' => 69.7226],
+    'ahmedabad' => ['lat' => 23.0225, 'lng' => 72.5714],
+];
+
 try {
     if ($lat != 0.0 && $lng != 0.0) {
         $sql = "
-        SELECT h.id, h.name, h.open_time, h.close_time,
-        TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
-        ROUND(6371 * acos(
-            cos(radians(?)) *
-            cos(radians(COALESCE(h.latitude, 0))) *
-            cos(radians(COALESCE(h.longitude, 0)) - radians(?)) +
-            sin(radians(?)) *
-            sin(radians(COALESCE(h.latitude, 0)))
-        ),2) AS distance
+        SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.latitude, h.longitude,
+               h.open_time, h.close_time,
+               TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
+               ROUND(6371 * acos(
+                   LEAST(1.0, GREATEST(-1.0,
+                       cos(radians(?)) *
+                       cos(radians(COALESCE(h.latitude, 23.4636))) *
+                       cos(radians(COALESCE(h.longitude, 73.3005)) - radians(?)) +
+                       sin(radians(?)) *
+                       sin(radians(COALESCE(h.latitude, 23.4636)))
+                   ))
+               ), 2) AS distance
         FROM hospitals h
         ORDER BY distance ASC
-        LIMIT 10
+        LIMIT 25
         ";
 
         $stmt = $mysqli->prepare($sql);
@@ -31,22 +43,43 @@ try {
         $res = $stmt->get_result();
     } else {
         $res = $mysqli->query("
-        SELECT h.id, h.name, h.open_time, h.close_time,
-        TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
-        0 AS distance
+        SELECT h.id, h.name, h.address, h.phone, h.email, h.city, h.latitude, h.longitude,
+               h.open_time, h.close_time,
+               TIME(NOW()) BETWEEN h.open_time AND h.close_time AS is_open,
+               NULL AS distance
         FROM hospitals h
         ORDER BY h.name ASC
-        LIMIT 10
+        LIMIT 25
         ");
     }
 
     if ($res) {
+        $index = 0;
         while ($r = $res->fetch_assoc()) {
+            $cLower = strtolower(trim($r['city'] ?? ''));
+            $fallback = $cityCoords[$cLower] ?? ['lat' => 23.4636, 'lng' => 73.3005];
+
+            // If coordinates are missing, provide default city coords with slight jitter so markers don't overlap exactly
+            if (empty($r['latitude']) || empty($r['longitude'])) {
+                $jitter = ($index % 5) * 0.003;
+                $r['latitude'] = $fallback['lat'] + $jitter;
+                $r['longitude'] = $fallback['lng'] + $jitter;
+            } else {
+                $r['latitude'] = (float)$r['latitude'];
+                $r['longitude'] = (float)$r['longitude'];
+            }
+
+            $r['id'] = (int)$r['id'];
+            $r['distance'] = isset($r['distance']) && $r['distance'] !== null ? (float)$r['distance'] : null;
+            $r['is_open'] = (bool)$r['is_open'];
+
             $data[] = $r;
+            $index++;
         }
     }
 } catch (Throwable $e) {
-    // Return empty array on exception
+    // Return empty array or logged error
+    error_log("map_hospitals error: " . $e->getMessage());
 }
 
 echo json_encode($data);

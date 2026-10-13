@@ -64,9 +64,9 @@ $lab_appts = $stmt3->get_result();
 
 /* ================= LAB REPORTS ================= */
 $stmt4 = $mysqli->prepare("
-    SELECT lr.*, la.test_name
+    SELECT lr.*, COALESCE(la.test_name, 'Medical Test') AS test_name
     FROM lab_reports lr
-    JOIN lab_appointments la ON lr.appointment_id = la.id
+    LEFT JOIN lab_appointments la ON lr.appointment_id = la.id
     WHERE lr.patient_id = ?
     ORDER BY lr.id DESC
 ");
@@ -332,23 +332,31 @@ Delete
 
 <!-- LAB REPORTS -->
 <div class="card" style="margin-top:12px;">
-<h3 class="header-title">Lab Reports</h3>
+<h3 class="header-title">🧪 Lab Reports</h3>
 
 <?php if($reports->num_rows === 0): ?>
-<p>No reports yet.</p>
+<p style="color:var(--text-muted);font-size:14px;">No lab reports uploaded yet.</p>
 <?php else: ?>
 
 <?php while($r = $reports->fetch_assoc()): ?>
-<div class="row" style="border-bottom:1px solid #ddd;padding:6px;">
-<b><?=htmlspecialchars($r['test_name'])?></b><br>
-<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-<a href="uploads/<?=htmlspecialchars($r['report_file'])?>" target="_blank">
-View Report
-</a>
-<a href="delete_report.php?id=<?= $r['id'] ?>"
-   style="color:red;font-size:12px;"
-   onclick="return confirm('Delete this report?')">🗑 Delete</a>
-</div>
+<div class="row" style="border-bottom:1px solid #f1f5f9;padding:12px 6px;align-items:center;">
+    <div>
+        <b><?=htmlspecialchars($r['test_name'])?></b><br>
+        <small style="color:var(--text-muted);">
+            📅 <?= !empty($r['uploaded_at']) ? htmlspecialchars($r['uploaded_at']) : 'Recent' ?>
+        </small>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <a href="view_report.php?id=<?= (int)$r['id'] ?>" target="_blank" class="btn" style="padding:5px 12px;font-size:12px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+            👁️ View
+        </a>
+        <a href="download_report.php?id=<?= (int)$r['id'] ?>" download class="btn" style="padding:5px 12px;font-size:12px;background:#059669;color:#fff;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+            📥 Download
+        </a>
+        <a href="delete_report.php?id=<?= $r['id'] ?>"
+           class="delete-btn"
+           onclick="return confirm('Delete this report?')">🗑</a>
+    </div>
 </div>
 <?php endwhile; ?>
 

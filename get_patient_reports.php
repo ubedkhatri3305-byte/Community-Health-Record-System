@@ -6,10 +6,12 @@ ensure_role('doctor');
 $doctor_id = $_SESSION['user_id'];
 $patient_id = (int)$_GET['patient_id'];
 
-// Verify that this patient is associated with this doctor
+header('Content-Type: application/json');
+
+// Verify that this patient has had consultations or appointments with this doctor
 $verify = $mysqli->prepare("
     SELECT COUNT(*) as count FROM appointments 
-    WHERE doctor_id = ? AND patient_id = ? AND status = 'accepted'
+    WHERE doctor_id = ? AND patient_id = ?
 ");
 $verify->bind_param("ii", $doctor_id, $patient_id);
 $verify->execute();
@@ -20,18 +22,16 @@ if ($result['count'] == 0) {
     exit;
 }
 
-header('Content-Type: application/json');
-
 try {
-    // Fetch reports for this patient
+    // Fetch reports for this patient using LEFT JOIN so all uploaded reports are included
     $stmt = $mysqli->prepare("
         SELECT 
             lr.id,
             lr.report_file,
-            la.test_name,
+            COALESCE(la.test_name, 'Laboratory Test') AS test_name,
             lr.uploaded_at
         FROM lab_reports lr
-        JOIN lab_appointments la ON lr.appointment_id = la.id
+        LEFT JOIN lab_appointments la ON lr.appointment_id = la.id
         WHERE lr.patient_id = ?
         ORDER BY lr.uploaded_at DESC
     ");
@@ -41,10 +41,13 @@ try {
 
     $reports = [];
     while ($row = $result->fetch_assoc()) {
+        $cleanFile = basename($row['report_file'] ?? '');
         $reports[] = [
-            'id' => $row['id'],
-            'test_name' => htmlspecialchars($row['test_name'] ?? ''),
-            'report_file' => htmlspecialchars($row['report_file'] ?? ''),
+            'id' => (int)$row['id'],
+            'test_name' => htmlspecialchars($row['test_name'] ?? 'Laboratory Test'),
+            'report_file' => htmlspecialchars($cleanFile),
+            'view_url' => 'view_report.php?id=' . (int)$row['id'],
+            'download_url' => 'download_report.php?id=' . (int)$row['id'],
             'uploaded_at' => $row['uploaded_at'] ?? ''
         ];
     }

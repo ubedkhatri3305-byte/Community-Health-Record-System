@@ -413,22 +413,22 @@ $lab_reports = $stmt_reports->get_result();
                         
                         <div class="patient-info">
                             <strong>📝 File:</strong> 
-                            <a href="uploads/<?= htmlspecialchars($report['report_file']) ?>" 
+                            <a href="view_report.php?id=<?= (int)$report['id'] ?>" 
                                target="_blank" 
                                class="file-link">
-                                📥 <?= htmlspecialchars($report['report_file']) ?>
+                                📄 <?= htmlspecialchars(basename($report['report_file'])) ?>
                             </a>
                         </div>
                         
                         <span class="badge">✅ Completed</span>
                         
                         <div class="action-buttons">
-                            <a href="uploads/<?= htmlspecialchars($report['report_file']) ?>" 
+                            <a href="view_report.php?id=<?= (int)$report['id'] ?>" 
                                target="_blank" 
                                class="btn btn-info">
                                 👁️ View Report
                             </a>
-                            <a href="uploads/<?= htmlspecialchars($report['report_file']) ?>" 
+                            <a href="download_report.php?id=<?= (int)$report['id'] ?>" 
                                download 
                                class="btn btn-primary">
                                 ⬇️ Download

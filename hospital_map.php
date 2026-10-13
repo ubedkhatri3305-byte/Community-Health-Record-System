@@ -3,158 +3,131 @@ require 'config.php';
 
 $hospital_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-if (!$hospital_id) {
-    die("❌ Hospital ID not provided");
+// If hospital_id is not provided, try to use logged-in hospital user ID
+if (!$hospital_id && isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'hospital') {
+    $hospital_id = (int)$_SESSION['user_id'];
 }
 
-/* ================= FETCH HOSPITAL ================= */
-$stmt = $mysqli->prepare("
-    SELECT id, name, address, phone, email, latitude, longitude, city, open_time, close_time
-    FROM hospitals
-    WHERE id = ?
-");
-$stmt->bind_param("i", $hospital_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$hospital = $result->fetch_assoc();
+// Fallback to first available hospital if still not found
+if (!$hospital_id) {
+    $firstQuery = $mysqli->query("SELECT id FROM hospitals LIMIT 1");
+    if ($firstQuery && $firstRow = $firstQuery->fetch_assoc()) {
+        $hospital_id = (int)$firstRow['id'];
+    }
+}
+
+$hospital = null;
+if ($hospital_id) {
+    $stmt = $mysqli->prepare("
+        SELECT id, name, address, phone, email, latitude, longitude, city, open_time, close_time
+        FROM hospitals
+        WHERE id = ?
+    ");
+    $stmt->bind_param("i", $hospital_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $hospital = $result->fetch_assoc();
+}
 
 if (!$hospital) {
-    die("❌ Hospital not found");
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Hospital Not Found - CHR</title>
+        <link rel="stylesheet" href="assets/css/styles.css">
+    </head>
+    <body class="center" style="min-height:100vh;padding:20px;">
+        <div class="card" style="max-width:480px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:12px;">🏥⚠️</div>
+            <h2>Hospital Not Found</h2>
+            <p style="color:var(--text-secondary);margin:12px 0 20px 0;">No hospital record exists for this identifier.</p>
+            <a href="<?= (isset($_SESSION['role']) && $_SESSION['role'] === 'hospital') ? 'hospital_dashboard.php' : 'index.php' ?>" class="btn">⬅ Return to Dashboard</a>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
-$lat = $hospital['latitude'] ?: 23.0225;  // Default: Ahmedabad, India
-$lng = $hospital['longitude'] ?: 72.5714;
-$name = htmlspecialchars($hospital['name']);
-$address = htmlspecialchars($hospital['address']);
-$phone = htmlspecialchars($hospital['phone']);
-$email = htmlspecialchars($hospital['email']);
-?>
+$has_exact_coords = !empty($hospital['latitude']) && !empty($hospital['longitude']);
+$lat = $has_exact_coords ? (float)$hospital['latitude'] : 23.0225;  // Default: Gujarat center
+$lng = $has_exact_coords ? (float)$hospital['longitude'] : 72.5714;
+$name = htmlspecialchars($hospital['name'] ?? 'Hospital');
+$address = htmlspecialchars($hospital['address'] ?? 'Address not specified');
+$phone = htmlspecialchars($hospital['phone'] ?? 'N/A');
+$email = htmlspecialchars($hospital['email'] ?? 'N/A');
+$city = htmlspecialchars($hospital['city'] ?? '');
+$open_time = !empty($hospital['open_time']) ? substr($hospital['open_time'], 0, 5) : '09:00';
+$close_time = !empty($hospital['close_time']) ? substr($hospital['close_time'], 0, 5) : '18:00';
 
+$is_hospital_role = isset($_SESSION['role']) && $_SESSION['role'] === 'hospital';
+$back_url = $is_hospital_role ? 'hospital_dashboard.php' : (isset($_SESSION['role']) && $_SESSION['role'] === 'patient' ? 'dashboard_patient.php' : 'index.php');
+?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= $name ?> - Location</title>
+    <title><?= $name ?> - Map View</title>
     <link rel="stylesheet" href="assets/css/styles.css">
+    
+    <!-- 🗺️ Leaflet CSS & JS (Free, Reliable OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <style>
         #map {
             width: 100%;
-            height: 500px;
-            border-radius: 8px;
-            margin: 20px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: 480px;
+            border-radius: var(--radius-lg);
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--card-border);
+            z-index: 1;
         }
         
         .hospital-info {
-            background: #f3f4f6;
-            padding: 20px;
-            border-radius: 8px;
+            background: white;
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--card-border);
+            box-shadow: var(--shadow-sm);
             margin: 20px 0;
         }
         
-        .hospital-info h3 {
-            margin: 0 0 15px 0;
-            color: #1f2937;
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 14px;
         }
         
-        .info-row {
+        .info-item {
             display: flex;
-            align-items: center;
-            margin: 10px 0;
-            color: #374151;
+            align-items: flex-start;
+            gap: 10px;
         }
         
-        .info-row strong {
-            min-width: 120px;
-            color: #1f2937;
-        }
-        
-        .info-row a {
-            color: #3b82f6;
-            text-decoration: none;
-        }
-        
-        .info-row a:hover {
-            text-decoration: underline;
-        }
-        
-        .icon {
-            margin-right: 10px;
-            font-size: 18px;
+        .info-icon {
+            font-size: 20px;
+            line-height: 1;
+            margin-top: 2px;
         }
         
         .action-buttons {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             margin-top: 20px;
             flex-wrap: wrap;
         }
         
-        .action-buttons a,
-        .action-buttons button {
+        .action-buttons a, .action-buttons button {
             flex: 1;
-            min-width: 150px;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            text-decoration: none;
+            min-width: 160px;
             text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-directions {
-            background: #10b981;
-            color: white;
-        }
-        
-        .btn-directions:hover {
-            background: #059669;
-        }
-        
-        .btn-back {
-            background: #6b7280;
-            color: white;
-        }
-        
-        .btn-back:hover {
-            background: #4b5563;
-        }
-        
-        .btn-call {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .btn-call:hover {
-            background: #2563eb;
-        }
-        
-        .status-open {
-            color: #10b981;
-            font-weight: bold;
-        }
-        
-        .status-closed {
-            color: #ef4444;
-            font-weight: bold;
-        }
-        
-        @media (max-width: 768px) {
-            #map {
-                height: 400px;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-            }
-            
-            .action-buttons a,
-            .action-buttons button {
-                min-width: auto;
-            }
         }
     </style>
 </head>
@@ -166,126 +139,123 @@ $email = htmlspecialchars($hospital['email']);
     <div class="topbar">
         <div class="brand">📍 <?= $name ?></div>
         <div>
-            <a id="back_btn" onclick="goBack()" style="cursor:pointer;">⬅ Back</a>
+            <a href="<?= $back_url ?>">⬅ Back to Dashboard</a>
+            <?php if($is_hospital_role): ?>
+                <a href="edit_hospital_profile.php">✏ Edit Coordinates</a>
+            <?php endif; ?>
             <a href="logout.php">Logout</a>
         </div>
     </div>
+
+    <?php if (!$has_exact_coords): ?>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;color:#1e40af;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:24px;">ℹ️</span>
+        <div>
+            <strong>Notice:</strong> This hospital does not have exact GPS coordinates saved. A regional location is shown.
+            <?php if ($is_hospital_role): ?>
+                <br><a href="edit_hospital_profile.php" style="color:#2563eb;font-weight:700;text-decoration:underline;">Click here to set your exact latitude & longitude</a> in your profile.
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- 🗺️ MAP -->
     <div id="map"></div>
 
     <!-- 📋 HOSPITAL INFO -->
     <div class="hospital-info">
-        <h3><?= $name ?></h3>
+        <h3 class="header-title" style="margin-bottom:16px;">🏥 Hospital Information</h3>
         
-        <div class="info-row">
-            <span class="icon">📍</span>
-            <strong>Address:</strong>
-            <span><?= $address ?></span>
-        </div>
-        
-        <div class="info-row">
-            <span class="icon">📞</span>
-            <strong>Phone:</strong>
-            <a href="tel:<?= $phone ?>"><?= $phone ?></a>
-        </div>
-        
-        <div class="info-row">
-            <span class="icon">📧</span>
-            <strong>Email:</strong>
-            <a href="mailto:<?= $email ?>"><?= $email ?></a>
-        </div>
-        
-        <div class="info-row">
-            <span class="icon">🕐</span>
-            <strong>Timings:</strong>
-            <span><?= substr($hospital['open_time'], 0, 5) ?> - <?= substr($hospital['close_time'], 0, 5) ?></span>
-        </div>
-        
-        <div class="info-row">
-            <span class="icon">📍</span>
-            <strong>Coordinates:</strong>
-            <span><?= number_format($lat, 4) ?>, <?= number_format($lng, 4) ?></span>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-icon">📍</span>
+                <div>
+                    <strong style="display:block;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Address</strong>
+                    <span><?= $address ?><?= $city ? ', ' . $city : '' ?></span>
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-icon">📞</span>
+                <div>
+                    <strong style="display:block;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Phone</strong>
+                    <a href="tel:<?= $phone ?>" style="color:var(--primary);text-decoration:none;font-weight:600;"><?= $phone ?></a>
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-icon">📧</span>
+                <div>
+                    <strong style="display:block;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Email</strong>
+                    <a href="mailto:<?= $email ?>" style="color:var(--primary);text-decoration:none;"><?= $email ?></a>
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-icon">🕐</span>
+                <div>
+                    <strong style="display:block;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Working Hours</strong>
+                    <span><?= $open_time ?> &ndash; <?= $close_time ?></span>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 🔘 ACTION BUTTONS -->
     <div class="action-buttons">
         <a href="https://www.google.com/maps/search/?api=1&query=<?= $lat ?>,<?= $lng ?>" 
-           target="_blank" class="btn-directions">
+           target="_blank" class="btn" style="background:#059669;box-shadow:none;">
             🗺️ Open in Google Maps
         </a>
-        <a href="tel:<?= $phone ?>" class="btn-call">
+        <?php if (!empty($phone) && $phone !== 'N/A'): ?>
+        <a href="tel:<?= $phone ?>" class="btn" style="background:#2563eb;box-shadow:none;">
             ☎️ Call Hospital
         </a>
-        <button onclick="goBack()" class="btn-back" style="cursor:pointer;border:none;">
-            ⬅ Back
-        </button>
+        <?php endif; ?>
+        <a href="<?= $back_url ?>" class="btn btn-gray" style="box-shadow:none;">
+            ⬅ Back to Dashboard
+        </a>
     </div>
 
 </div>
 
-<!-- 🌐 GOOGLE MAPS API (for mapping functionality) -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDummyKey123456"></script>
-
 <script>
-    // ⬅️ Back button handler
-    function goBack() {
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            // If no history, go to dashboard
-            window.location.href = 'dashboard_patient.php';
-        }
-    }
-    
-    // 🗺️ Initialize map (using Leaflet for free alternative)
-    if (typeof L === 'undefined') {
-        // Fallback: Load Leaflet.js if Google Maps API key is not available
-        document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">');
-        document.write('<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"><\/script>');
-        
-        setTimeout(initializeMap, 500);
-    } else {
-        initializeMap();
-    }
-    
-    function initializeMap() {
-        const lat = <?= $lat ?>;
-        const lng = <?= $lng ?>;
-        const hospitalName = "<?= $name ?>";
-        const address = "<?= $address ?>";
+document.addEventListener('DOMContentLoaded', function() {
+    const lat = <?= json_encode($lat) ?>;
+    const lng = <?= json_encode($lng) ?>;
+    const hospitalName = <?= json_encode($name) ?>;
+    const address = <?= json_encode($address) ?>;
 
-        // Create map using Leaflet
-        const map = L.map('map').setView([lat, lng], 15);
-        
-        // Add tile layer from OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-        
-        // Add marker for hospital
-        const marker = L.marker([lat, lng]).addTo(map);
-        marker.bindPopup(`
-            <div style="font-weight: bold; margin-bottom: 5px;">📍 ${hospitalName}</div>
-            <div style="font-size: 13px;">${address}</div>
-        `).openPopup();
-        
-        // Customize marker icon
-        marker.setIcon(L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/1524/1524879.png',
-            iconSize: [30, 30],
-            popupAnchor: [0, -15]
-        }));
-    }
+    // Initialize Leaflet map
+    const map = L.map('map', {
+        scrollWheelZoom: true
+    }).setView([lat, lng], 15);
     
-    // ⬅️ Directions link
-    function openDirections() {
-        const lat = <?= $lat ?>;
-        const lng = <?= $lng ?>;
-        window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
-    }
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Custom pulse pin
+    const hospitalIcon = L.divIcon({
+        className: 'custom-hospital-pin',
+        html: `<div style="background:#2563eb;color:#ffffff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 14px rgba(37,99,235,0.45);border:3px solid white;">🏥</div>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+        popupAnchor: [0, -22]
+    });
+    
+    // Add marker
+    const marker = L.marker([lat, lng], { icon: hospitalIcon }).addTo(map);
+    marker.bindPopup(`
+        <div style="font-family:inherit;padding:4px;">
+            <div style="font-weight:700;font-size:14px;color:#1e3a8a;margin-bottom:4px;">📍 ${hospitalName}</div>
+            <div style="font-size:12px;color:#475569;margin-bottom:8px;">${address}</div>
+            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none;">🗺️ Navigate</a>
+        </div>
+    `).openPopup();
+});
 </script>
 
 </body>

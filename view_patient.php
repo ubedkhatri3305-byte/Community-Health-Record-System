@@ -175,10 +175,11 @@ $prescriptions = $p->get_result();
   <div class="card" style="margin-bottom:12px;">
     <small style="color:var(--text-muted);"><?= htmlspecialchars($row['uploaded_at'] ?? '') ?></small><br>
 
-    <?php if(!empty($row['report_file'])): 
-      $reportUrl = (strpos($row['report_file'], 'uploads/') === 0) ? $row['report_file'] : 'uploads/' . $row['report_file'];
-    ?>
-      <a href="<?= htmlspecialchars($reportUrl) ?>" target="_blank" class="btn" style="display:inline-block;padding:6px 14px;font-size:13px;margin-top:6px;">View Lab Report</a>
+    <?php if(!empty($row['report_file'])): ?>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <a href="view_report.php?id=<?= (int)$row['id'] ?>" target="_blank" class="btn" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;font-size:13px;background:#2563eb;color:#fff;width:auto;border-radius:6px;text-decoration:none;">👁️ View Report</a>
+        <a href="download_report.php?id=<?= (int)$row['id'] ?>" download class="btn" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;font-size:13px;background:#059669;color:#fff;width:auto;border-radius:6px;text-decoration:none;">📥 Download Report</a>
+      </div>
     <?php endif; ?>
   </div>
   <?php endwhile; ?>

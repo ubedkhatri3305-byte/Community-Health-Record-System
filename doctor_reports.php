@@ -13,11 +13,11 @@ $stmt = $mysqli->prepare("
         u.name,
         u.email,
         u.phone,
-        COUNT(lr.id) as total_reports
+        COUNT(DISTINCT lr.id) as total_reports
     FROM users u
     JOIN appointments a ON u.id = a.patient_id
     LEFT JOIN lab_reports lr ON u.id = lr.patient_id
-    WHERE a.doctor_id = ? AND a.status = 'accepted'
+    WHERE a.doctor_id = ?
     GROUP BY u.id, u.name, u.email, u.phone
     ORDER BY u.name ASC
 ");
@@ -368,27 +368,32 @@ function viewPatientReports(patientId, patientName) {
             if (data.reports && data.reports.length > 0) {
                 reportsList.innerHTML = '';
                 data.reports.forEach(report => {
+                    const viewUrl = report.view_url || ('view_report.php?id=' + report.id);
+                    const downloadUrl = report.download_url || ('download_report.php?id=' + report.id);
                     reportsList.innerHTML += `
                         <div class="report-item">
                             <div class="report-test">🔬 ${report.test_name}</div>
-                            <div style="font-size: 12px; color: #6b7280;">
-                                📅 ${report.uploaded_at || 'N/A'}
+                            <div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                📅 ${report.uploaded_at || 'Recently uploaded'} &bull; 📄 ${report.report_file}
                             </div>
-                            <div class="report-file">
-                                <?php $dummy = 1; ?>
-                                <a href="${report.report_file.startsWith('uploads/') ? report.report_file : 'uploads/' + report.report_file}" target="_blank">
-                                    📥 Download Report
-                                </a> | 
-                                <a href="${report.report_file.startsWith('uploads/') ? report.report_file : 'uploads/' + report.report_file}" target="_blank">
+                            <div class="report-file" style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+                                <a href="${viewUrl}" target="_blank" class="btn" style="background:#2563eb;color:#fff;padding:6px 14px;font-size:13px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
                                     👁️ View Report
+                                </a>
+                                <a href="${downloadUrl}" download="${report.report_file}" class="btn" style="background:#059669;color:#fff;padding:6px 14px;font-size:13px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                                    📥 Download Report
                                 </a>
                             </div>
                         </div>
                     `;
                 });
             } else {
-                reportsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280;">No reports available</div>';
+                reportsList.innerHTML = '<div style="text-align: center; padding: 24px; color: #6b7280; font-size:14px;">No laboratory reports found for this patient.</div>';
             }
+            modal.style.display = 'block';
+        })
+        .catch(err => {
+            reportsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc2626;">Error loading reports. Please try again.</div>';
             modal.style.display = 'block';
         });
 }
