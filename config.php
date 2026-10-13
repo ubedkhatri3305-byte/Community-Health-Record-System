@@ -163,70 +163,60 @@ if (!$connected && ($DB_HOST === 'localhost' || $DB_HOST === '127.0.0.1')) {
 }
 
 if (!$connected || $mysqli->connect_errno) {
-    if ($is_serverless) {
-        $has_custom_host = ($DB_HOST !== 'localhost' && $DB_HOST !== '127.0.0.1');
-        $has_pass = !empty($DB_PASS);
-        http_response_code(500);
-        ?>
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>CHR - Database Status & Setup</title>
-            <link rel="stylesheet" href="assets/css/styles.css">
-        </head>
-        <body class="center" style="min-height:100vh;background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:#f8fafc;padding:20px 0;">
-            <div class="card" style="max-width:620px;width:92%;margin:auto;padding:32px;background:#ffffff;color:#1e293b;border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
-                <div class="logo" style="background:#eff6ff;color:#2563eb;font-size:32px;">🏥</div>
-                <h2 style="color:#1e3a8a;margin-bottom:6px;">Cloud Database Connection Status</h2>
-                
-                <?php if (!$has_custom_host): ?>
-                <!-- ALERT: Variables Not Detected Yet -->
-                <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:16px;margin:16px 0;color:#92400e;">
-                    <strong>⚠️ Action Needed: Click "Redeploy" in Vercel!</strong><br>
-                    <p style="font-size:13px;margin:6px 0 0 0;line-height:1.5;">
-                        If you already added Environment Variables in Vercel Project Settings, Vercel requires you to trigger a <strong>Redeploy</strong> for those variables to be activated on the live site!
-                    </p>
-                </div>
-                <?php else: ?>
-                <!-- ALERT: Variables Detected but Connection Error -->
-                <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;padding:16px;margin:16px 0;color:#991b1b;">
-                    <strong>❌ MySQL Error:</strong><br>
-                    <code style="display:block;margin-top:6px;font-size:13px;background:rgba(255,255,255,0.7);padding:8px;border-radius:6px;word-break:break-all;">
-                        <?= htmlspecialchars($conn_error ?: 'Connection timed out or access denied') ?>
-                    </code>
-                </div>
-                <?php endif; ?>
+    $has_custom_host = ($DB_HOST !== 'localhost' && $DB_HOST !== '127.0.0.1');
+    $has_pass = !empty($DB_PASS);
+    
+    // Don't emit 500 on health check requests so initial cloud deployments can stabilize
+    $is_health = (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'health') !== false) ||
+                 (isset($_SERVER['HTTP_USER_AGENT']) && stripos($_SERVER['HTTP_USER_AGENT'], 'health') !== false);
 
-                <p style="color:#64748b;font-size:13px;margin-bottom:12px;font-weight:600;">Current Environment Variables Detected by Vercel:</p>
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;font-family:monospace;font-size:13px;line-height:1.9;margin-bottom:20px;">
-                    <div><strong>DB_HOST</strong>: <?= htmlspecialchars($DB_HOST) ?> <?= $has_custom_host ? '✅' : '❌ (Not detected)' ?></div>
-                    <div><strong>DB_USER</strong>: <?= htmlspecialchars($DB_USER) ?> <?= !empty($DB_USER) && $DB_USER !== 'root' ? '✅' : '' ?></div>
-                    <div><strong>DB_PASS</strong>: <?= $has_pass ? '•••••••• (Detected) ✅' : '❌ (Missing / Empty)' ?></div>
-                    <div><strong>DB_NAME</strong>: <?= htmlspecialchars($DB_NAME) ?></div>
-                    <div><strong>DB_PORT</strong>: <?= htmlspecialchars($DB_PORT) ?></div>
-                    <div><strong>DB_SSL</strong>: <?= $DB_SSL ? 'true ✅' : 'false (Set to true for TiDB/Aiven)' ?></div>
-                </div>
-
-                <div style="background:#eff6ff;border-radius:10px;padding:14px;font-size:13px;color:#1e40af;line-height:1.6;margin-bottom:20px;">
-                    <strong>How to apply Environment Variables in Vercel:</strong><br>
-                    1. Go to <strong>Vercel Dashboard &rarr; Deployments</strong> tab.<br>
-                    2. Click the three dots (<strong>...</strong>) on the latest deployment.<br>
-                    3. Click <strong>Redeploy</strong> (with the checkbox "Use existing Build Cache" or clean build).<br>
-                    4. Once redeployed, reload this page!
-                </div>
-
-                <button class="btn" onclick="location.reload()">🔄 Refresh Page</button>
+    http_response_code($is_health ? 200 : 503);
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>CHR - Database Status & Setup</title>
+        <link rel="stylesheet" href="assets/css/styles.css">
+    </head>
+    <body class="center" style="min-height:100vh;background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:#f8fafc;padding:20px 0;">
+        <div class="card" style="max-width:620px;width:92%;margin:auto;padding:32px;background:#ffffff;color:#1e293b;border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+            <div class="logo" style="background:#eff6ff;color:#2563eb;font-size:32px;">🏥</div>
+            <h2 style="color:#1e3a8a;margin-bottom:6px;">Database Connection Status</h2>
+            
+            <?php if (!$has_custom_host): ?>
+            <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:16px;margin:16px 0;color:#92400e;">
+                <strong>⚠️ Local Database Initializing or Connecting...</strong><br>
+                <p style="font-size:13px;margin:6px 0 0 0;line-height:1.5;">
+                    The database server is starting up or external credentials have not been configured. If you are hosting on Render or Vercel, please check your Environment Variables.
+                </p>
             </div>
-        </body>
-        </html>
-        <?php
-        exit;
-    } else {
-        die("Database connection failed: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . 
-            "<br><small>Host: " . htmlspecialchars($DB_HOST) . " | Port: " . htmlspecialchars($DB_PORT) . " | Database: " . htmlspecialchars($DB_NAME) . "</small>");
-    }
+            <?php else: ?>
+            <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;padding:16px;margin:16px 0;color:#991b1b;">
+                <strong>❌ Database Connection Error:</strong><br>
+                <code style="display:block;margin-top:6px;font-size:13px;background:rgba(255,255,255,0.7);padding:8px;border-radius:6px;word-break:break-all;">
+                    <?= htmlspecialchars($conn_error ?: ($mysqli->connect_error ?? 'Connection timed out or access denied')) ?>
+                </code>
+            </div>
+            <?php endif; ?>
+
+            <p style="color:#64748b;font-size:13px;margin-bottom:12px;font-weight:600;">Current Environment Configuration:</p>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;font-family:monospace;font-size:13px;line-height:1.9;margin-bottom:20px;">
+                <div><strong>DB_HOST</strong>: <?= htmlspecialchars($DB_HOST) ?> <?= $has_custom_host ? '✅' : 'ℹ️ (Default: local)' ?></div>
+                <div><strong>DB_USER</strong>: <?= htmlspecialchars($DB_USER) ?></div>
+                <div><strong>DB_PASS</strong>: <?= $has_pass ? '•••••••• ✅' : '❌ (Empty / None)' ?></div>
+                <div><strong>DB_NAME</strong>: <?= htmlspecialchars($DB_NAME) ?></div>
+                <div><strong>DB_PORT</strong>: <?= htmlspecialchars($DB_PORT) ?></div>
+                <div><strong>DB_SSL</strong>: <?= $DB_SSL ? 'true ✅' : 'false' ?></div>
+            </div>
+
+            <button class="btn" onclick="location.reload()">🔄 Refresh / Retry</button>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 function initialize_chr_tables($mysqli) {

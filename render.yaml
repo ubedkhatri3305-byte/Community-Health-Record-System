@@ -4,6 +4,7 @@ services:
     runtime: docker
     plan: free
     region: oregon
+    healthCheckPath: /health.php
     envVars:
       - key: DB_HOST
         sync: false
