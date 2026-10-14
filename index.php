@@ -103,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <title>Login - Community Health Record System</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="assets/images/logo.png">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 
@@ -112,7 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="card form">
 
-<div class="logo">🏥</div>
+<div class="logo">
+    <img src="assets/images/logo.png" alt="Community Health Record System Logo">
+</div>
 <h2 style="margin-bottom:4px;">CHR Portal</h2>
 <p style="text-align:center;color:var(--text-muted);font-size:13px;margin-bottom:22px;">Community Health Record System</p>
 

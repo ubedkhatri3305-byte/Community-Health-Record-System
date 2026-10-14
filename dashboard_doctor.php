@@ -306,6 +306,7 @@ while ($r = $cal_res->fetch_assoc()) {
   border: 1px solid var(--card-border);
 }
 </style>
+<link rel="icon" type="image/png" href="assets/images/logo.png">
 </head>
 
 <body>
@@ -314,7 +315,7 @@ while ($r = $cal_res->fetch_assoc()) {
 
 <!-- TOP -->
 <div class="topbar">
-  <h3>Doctor Dashboard</h3>
+  <div class="brand">Doctor Dashboard</div>
   <div>
     <a href="doctor_prescriptions.php" style="color:white;font-weight:600;background:rgba(255,255,255,0.2);padding:5px 12px;border-radius:6px;text-decoration:none;margin-right:8px;">💊 Prescriptions</a>
     <a href="doctor_reports.php" style="color:white;margin-right:8px;">📋 Reports</a>

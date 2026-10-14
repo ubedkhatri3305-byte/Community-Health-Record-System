@@ -120,14 +120,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     background:#10b981;
 }
 </style>
-
+<link rel="icon" type="image/png" href="assets/images/logo.png">
 </head>
 <body>
 
 <div class="center" style="min-height:100vh">
 <div class="card form">
 
-<div class="logo">🧪 LAB</div>
+<div class="logo">
+    <img src="assets/images/logo.png" alt="Community Health Record System Logo">
+</div>
 <h2>Book Lab Test</h2>
 
 <?php if($msg): ?>

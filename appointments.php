@@ -126,6 +126,7 @@ WHERE role='doctor'
 <head>
 <title>Book Appointment</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/png" href="assets/images/logo.png">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
@@ -141,7 +142,9 @@ WHERE role='doctor'
 </div>
 
 <div class="card form" style="margin-top:20px;">
-<div class="logo">AP</div>
+<div class="logo">
+    <img src="assets/images/logo.png" alt="CHR Logo">
+</div>
 <h2>Book Appointment</h2>
 
 <?php if($msg): ?>

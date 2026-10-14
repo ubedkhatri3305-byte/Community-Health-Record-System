@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <title>Register Doctor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
+<link rel="icon" type="image/png" href="assets/images/logo.png">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 
@@ -107,7 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="center" style="min-height:100vh">
 <div class="card form">
 
-<div class="logo">DR</div>
+<div class="logo">
+    <img src="assets/images/logo.png" alt="Community Health Record System Logo">
+</div>
 <h2>Doctor Registration</h2>
 
 <?php if($error): ?>

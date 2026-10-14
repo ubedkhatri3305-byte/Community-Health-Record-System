@@ -119,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="utf-8">
   <title>Add Health Record</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/png" href="assets/images/logo.png">
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
@@ -135,7 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <div class="card form" style="margin-top:20px;">
 
-    <div class="logo">+</div>
+    <div class="logo">
+      <img src="assets/images/logo.png" alt="CHR Logo">
+    </div>
     <h2>Add Health Record</h2>
 
     <?php if(!empty($error)): ?>

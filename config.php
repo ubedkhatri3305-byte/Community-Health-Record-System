@@ -181,11 +181,14 @@ if (!$connected || $mysqli->connect_errno) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>CHR - Database Status & Setup</title>
+        <link rel="icon" type="image/png" href="assets/images/logo.png">
         <link rel="stylesheet" href="assets/css/styles.css">
     </head>
     <body class="center" style="min-height:100vh;background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:#f8fafc;padding:20px 0;">
         <div class="card" style="max-width:620px;width:92%;margin:auto;padding:32px;background:#ffffff;color:#1e293b;border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
-            <div class="logo" style="background:#eff6ff;color:#2563eb;font-size:32px;">🏥</div>
+            <div class="logo">
+                <img src="assets/images/logo.png" alt="Community Health Record System Logo">
+            </div>
             <h2 style="color:#1e3a8a;margin-bottom:6px;">Database Connection Status</h2>
             
             <?php if (!$has_custom_host): ?>

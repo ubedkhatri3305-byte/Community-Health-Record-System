@@ -32,6 +32,7 @@ $patients = $stmt->get_result();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Patient Reports - Doctor View</title>
+    <link rel="icon" type="image/png" href="assets/images/logo.png">
     <link rel="stylesheet" href="assets/css/styles.css">
     
     <style>
@@ -270,11 +271,14 @@ $patients = $stmt->get_result();
     
     <!-- 🔝 TOPBAR -->
     <div class="topbar">
-        <div>
-            <h2>📋 Patient Reports</h2>
-            <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">
-                View your patients' lab reports
-            </p>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <img src="assets/images/logo.png" alt="CHR Logo" style="width:42px;height:42px;border-radius:10px;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:1.5px solid rgba(255,255,255,0.4);">
+            <div>
+                <h2>📋 Patient Reports</h2>
+                <p style="margin: 3px 0 0; font-size: 14px; opacity: 0.9;">
+                    View your patients' lab reports
+                </p>
+            </div>
         </div>
         <div>
             <a href="dashboard_doctor.php">← Back to Dashboard</a>
